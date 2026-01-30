@@ -1,21 +1,29 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { stocks } from '../data/stocks';
+import { useRealTimeStocks } from '../hooks/useRealTimeStocks';
+import { usePortfolio } from '../context/PortfolioContext';
 
 export const Market: React.FC = () => {
     const navigate = useNavigate();
+    const { stocks, isLoading, lastApiUpdate } = useRealTimeStocks();
+    const { virtualCash, totalValue, totalProfit, holdings } = usePortfolio();
+
+    // Format currency for display
+    const formatCurrency = (value: number) => {
+        return new Intl.NumberFormat('id-ID').format(Math.round(value));
+    };
 
     return (
         <div className="flex flex-col h-full bg-background-light dark:bg-background-dark">
             {/* Market Header */}
             <header className="h-16 flex items-center justify-between px-6 border-b border-card-border bg-background-light dark:bg-background-dark shrink-0 gap-6">
                 <div className="flex flex-1 items-center gap-8">
-                    <h2 className="text-lg font-bold text-slate-900 dark:text-white hidden md:block whitespace-nowrap">Market Explorer</h2>
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-white hidden md:block whitespace-nowrap">Simulasi Investasi</h2>
                     <div className="relative w-full max-w-lg hidden md:block">
                         <span className="absolute left-3 top-2.5 text-text-secondary material-symbols-outlined text-[20px]">search</span>
                         <input
                             className="w-full bg-background-light dark:bg-card-dark border border-card-border rounded-lg py-2 pl-10 pr-4 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none shadow-sm transition-all placeholder-text-secondary"
-                            placeholder="Search for stocks, ETFs, crypto..."
+                            placeholder="Search for stocks..."
                             type="text"
                         />
                         <div className="absolute right-2 top-2 hidden lg:flex gap-1">
@@ -25,9 +33,23 @@ export const Market: React.FC = () => {
                     </div>
                 </div>
                 <div className="flex items-center gap-4 ml-auto">
+                    {/* Portfolio Summary */}
+                    <div className="hidden lg:flex items-center gap-4">
+                        <div className="flex flex-col items-end">
+                            <span className="text-[10px] text-text-secondary uppercase">Total Value</span>
+                            <span className="text-sm font-bold text-slate-900 dark:text-white">Rp {formatCurrency(totalValue)}</span>
+                        </div>
+                        <div className="w-px h-8 bg-card-border"></div>
+                        <div className="flex flex-col items-end">
+                            <span className="text-[10px] text-text-secondary uppercase">P&L</span>
+                            <span className={`text-sm font-bold ${totalProfit >= 0 ? 'text-primary' : 'text-red-500'}`}>
+                                {totalProfit >= 0 ? '+' : ''} Rp {formatCurrency(totalProfit)}
+                            </span>
+                        </div>
+                    </div>
                     <div className="flex h-9 items-center rounded-lg bg-background-light dark:bg-card-dark border border-card-border px-3 shadow-sm">
                         <span className="text-xs text-text-secondary mr-2">Virtual Cash:</span>
-                        <span className="text-sm font-bold text-primary">$100,000</span>
+                        <span className="text-sm font-bold text-primary">Rp {formatCurrency(virtualCash)}</span>
                     </div>
                     <button className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-slate-200 dark:hover:bg-card-border text-text-secondary transition-colors relative">
                         <span className="material-symbols-outlined text-[20px]">notifications</span>
@@ -42,24 +64,35 @@ export const Market: React.FC = () => {
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-6 scroll-smooth">
                 <div className="max-w-[1600px] mx-auto flex flex-col gap-8">
-                    {/* Tabs */}
+                    {/* Live Status Indicator */}
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full ${isLoading ? 'bg-yellow-500 animate-pulse' : 'bg-primary'}`}></div>
+                            <span className="text-xs text-text-secondary">
+                                {isLoading ? 'Fetching live data...' : 'Real-time prices active'}
+                            </span>
+                            {lastApiUpdate && (
+                                <span className="text-[10px] text-text-secondary ml-2">
+                                    Last update: {lastApiUpdate.toLocaleTimeString()}
+                                </span>
+                            )}
+                        </div>
+                        {holdings.length > 0 && (
+                            <div className="flex items-center gap-2">
+                                <span className="material-symbols-outlined text-primary text-[16px]">account_balance_wallet</span>
+                                <span className="text-xs text-text-secondary">
+                                    {holdings.length} stock{holdings.length > 1 ? 's' : ''} in portfolio
+                                </span>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Tabs - Stocks Only */}
                     <div className="border-b border-card-border">
                         <nav aria-label="Tabs" className="-mb-px flex space-x-8">
                             <a className="border-primary text-primary whitespace-nowrap py-4 px-1 border-b-2 font-bold text-sm flex items-center gap-2" href="#">
                                 <span className="material-symbols-outlined text-[18px]">candlestick_chart</span>
                                 Stocks
-                            </a>
-                            <a className="border-transparent text-text-secondary hover:text-slate-900 dark:hover:text-white hover:border-card-border whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors" href="#">
-                                <span className="material-symbols-outlined text-[18px]">currency_bitcoin</span>
-                                Crypto
-                            </a>
-                            <a className="border-transparent text-text-secondary hover:text-slate-900 dark:hover:text-white hover:border-card-border whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors" href="#">
-                                <span className="material-symbols-outlined text-[18px]">currency_exchange</span>
-                                Forex
-                            </a>
-                            <a className="border-transparent text-text-secondary hover:text-slate-900 dark:hover:text-white hover:border-card-border whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors" href="#">
-                                <span className="material-symbols-outlined text-[18px]">oil_barrel</span>
-                                Commodities
                             </a>
                         </nav>
                     </div>
@@ -68,16 +101,16 @@ export const Market: React.FC = () => {
                         <div className="flex items-center justify-between">
                             <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                 <span className="material-symbols-outlined text-primary">trending_up</span>
-                                Trending Stocks
+                                Indonesian Stocks (IDX)
                             </h3>
                             <div className="flex bg-background-light dark:bg-card-dark rounded-lg p-1 border border-card-border">
-                                <button className="px-3 py-1 rounded bg-white dark:bg-card-border text-xs font-bold text-slate-900 dark:text-white shadow-sm">Volume</button>
+                                <button className="px-3 py-1 rounded bg-white dark:bg-card-border text-xs font-bold text-slate-900 dark:text-white shadow-sm">All</button>
                                 <button className="px-3 py-1 rounded text-text-secondary text-xs font-medium hover:text-slate-900 dark:hover:text-white transition-colors">Gainers</button>
                                 <button className="px-3 py-1 rounded text-text-secondary text-xs font-medium hover:text-slate-900 dark:hover:text-white transition-colors">Losers</button>
                             </div>
                         </div>
 
-                        {/* Stock Grid using Dynamic Data */}
+                        {/* Stock Grid using Real-Time Data */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                             {stocks.map((stock) => {
                                 const isPositive = stock.changePercent >= 0;
@@ -87,17 +120,28 @@ export const Market: React.FC = () => {
                                 const textIconClass = isNeutral ? 'text-gray-500' : isPositive ? 'text-primary' : 'text-red-500';
                                 const arrowIcon = isNeutral ? 'remove' : isPositive ? 'arrow_drop_up' : 'arrow_drop_down';
                                 const sign = isPositive ? '+' : '';
+                                const holding = holdings.find(h => h.ticker === stock.ticker);
 
                                 return (
                                     <div
                                         key={stock.ticker}
                                         onClick={() => navigate(`/market/${stock.ticker}`)}
-                                        className="bg-white dark:bg-card-dark rounded-xl border border-card-border p-5 shadow-sm hover:shadow-md transition-shadow cursor-pointer group relative overflow-hidden"
+                                        className="bg-white dark:bg-card-dark rounded-xl border border-card-border p-5 shadow-sm hover:shadow-md transition-all cursor-pointer group relative overflow-hidden"
                                     >
-                                        <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <span className="material-symbols-outlined text-text-secondary hover:text-primary">star</span>
-                                        </div>
-                                        <div className="flex items-center gap-4 mb-4">
+                                        {/* Live indicator */}
+                                        {stock.isLive && (
+                                            <div className="absolute top-3 right-3 flex items-center gap-1">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>
+                                                <span className="text-[9px] text-primary font-medium">LIVE</span>
+                                            </div>
+                                        )}
+                                        {/* Owned indicator */}
+                                        {holding && (
+                                            <div className="absolute top-3 left-3 px-1.5 py-0.5 bg-primary/10 rounded text-[9px] text-primary font-bold">
+                                                OWNED: {holding.quantity} lots
+                                            </div>
+                                        )}
+                                        <div className="flex items-center gap-4 mb-4 mt-3">
                                             <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold border ${bgIconClass} ${textIconClass} border-current`}>
                                                 {stock.ticker[0]}
                                             </div>
@@ -108,7 +152,7 @@ export const Market: React.FC = () => {
                                         </div>
                                         <div className="flex items-end justify-between mb-4">
                                             <div>
-                                                <div className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">{stock.price.toLocaleString()}</div>
+                                                <div className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">{formatCurrency(stock.price)}</div>
                                                 <span className="text-xs text-text-secondary">IDR</span>
                                             </div>
                                             <div className="text-right">
@@ -116,13 +160,28 @@ export const Market: React.FC = () => {
                                                     <span className="material-symbols-outlined text-[16px]">{arrowIcon}</span>
                                                     {Math.abs(stock.changePercent).toFixed(2)}%
                                                 </div>
-                                                <span className={`text-xs ${colorClass}`}>{sign}{stock.changeValue.toLocaleString()}</span>
+                                                <span className={`text-xs ${colorClass}`}>{sign}{formatCurrency(stock.changeValue)}</span>
                                             </div>
                                         </div>
-                                        {/* Simplified Sparkline / Chart Placeholder */}
+                                        {/* Sparkline from price history */}
                                         <div className="h-12 w-full">
                                             <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 30">
-                                                {isPositive ? (
+                                                {stock.priceHistory && stock.priceHistory.length > 1 ? (
+                                                    <>
+                                                        <path
+                                                            d={generateSparklinePath(stock.priceHistory)}
+                                                            fill="none"
+                                                            stroke={isPositive ? '#2ba094' : '#ef4444'}
+                                                            strokeWidth="2"
+                                                        />
+                                                        <path
+                                                            d={`${generateSparklinePath(stock.priceHistory)} V30 H0 Z`}
+                                                            fill={isPositive ? '#2ba094' : '#ef4444'}
+                                                            fillOpacity="0.1"
+                                                            stroke="none"
+                                                        />
+                                                    </>
+                                                ) : isPositive ? (
                                                     <>
                                                         <path d="M0,25 Q25,28 50,15 T100,5" fill="none" stroke="#2ba094" strokeWidth="2"></path>
                                                         <path d="M0,25 Q25,28 50,15 T100,5 V30 H0 Z" fill="#2ba094" fillOpacity="0.1" stroke="none"></path>
@@ -144,34 +203,41 @@ export const Market: React.FC = () => {
 
                         {/* Bottom Grid */}
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            {/* Top Gainers Table (Simplified Static) */}
+                            {/* Your Portfolio */}
                             <div className="bg-white dark:bg-card-dark rounded-xl border border-card-border overflow-hidden shadow-sm">
-                                <div className="p-4 border-b border-card-border flex items-center justify-between">
-                                    <h3 className="font-bold text-slate-900 dark:text-white">Top Gainers (24h)</h3>
-                                    <button className="text-xs font-bold text-primary hover:text-teal-600">View All</button>
+                                <div className="p-4 border-b border-card-border flex items-center justify-between bg-primary/5">
+                                    <div className="flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-primary">account_balance_wallet</span>
+                                        <h3 className="font-bold text-slate-900 dark:text-white">Your Portfolio</h3>
+                                    </div>
+                                    <span className="text-xs font-bold text-primary">Rp {formatCurrency(totalValue)}</span>
                                 </div>
-                                <table className="w-full text-sm text-left">
-                                    <tbody className="divide-y divide-card-border">
-                                        <tr className="hover:bg-background-light dark:hover:bg-card-border/30 transition-colors cursor-pointer">
-                                            <td className="px-4 py-3 font-bold text-slate-900 dark:text-white">BBNI</td>
-                                            <td className="px-4 py-3 text-text-secondary text-xs">Bank Negara Indo...</td>
-                                            <td className="px-4 py-3 text-right font-bold text-primary">+4.20%</td>
-                                            <td className="px-4 py-3 text-right text-slate-900 dark:text-white">5,100</td>
-                                        </tr>
-                                        <tr className="hover:bg-background-light dark:hover:bg-card-border/30 transition-colors cursor-pointer">
-                                            <td className="px-4 py-3 font-bold text-slate-900 dark:text-white">ANTM</td>
-                                            <td className="px-4 py-3 text-text-secondary text-xs">Aneka Tambang</td>
-                                            <td className="px-4 py-3 text-right font-bold text-primary">+3.15%</td>
-                                            <td className="px-4 py-3 text-right text-slate-900 dark:text-white">1,950</td>
-                                        </tr>
-                                        <tr className="hover:bg-background-light dark:hover:bg-card-border/30 transition-colors cursor-pointer">
-                                            <td className="px-4 py-3 font-bold text-slate-900 dark:text-white">ADRO</td>
-                                            <td className="px-4 py-3 text-text-secondary text-xs">Adaro Energy</td>
-                                            <td className="px-4 py-3 text-right font-bold text-primary">+2.88%</td>
-                                            <td className="px-4 py-3 text-right text-slate-900 dark:text-white">2,850</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                                {holdings.length > 0 ? (
+                                    <table className="w-full text-sm text-left">
+                                        <tbody className="divide-y divide-card-border">
+                                            {holdings.map(holding => {
+                                                const profitLoss = (holding.currentPrice - holding.averagePrice) * holding.quantity * 100;
+                                                const profitPercent = ((holding.currentPrice - holding.averagePrice) / holding.averagePrice) * 100;
+                                                return (
+                                                    <tr key={holding.ticker} className="hover:bg-background-light dark:hover:bg-card-border/30 transition-colors cursor-pointer" onClick={() => navigate(`/market/${holding.ticker}`)}>
+                                                        <td className="px-4 py-3 font-bold text-slate-900 dark:text-white">{holding.ticker}</td>
+                                                        <td className="px-4 py-3 text-text-secondary text-xs">{holding.quantity} lots</td>
+                                                        <td className={`px-4 py-3 text-right font-bold ${profitLoss >= 0 ? 'text-primary' : 'text-red-500'}`}>
+                                                            {profitLoss >= 0 ? '+' : ''}{profitPercent.toFixed(2)}%
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right text-slate-900 dark:text-white">{formatCurrency(holding.currentPrice)}</td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                ) : (
+                                    <div className="p-8 text-center">
+                                        <span className="material-symbols-outlined text-4xl text-text-secondary mb-2">shopping_cart</span>
+                                        <p className="text-text-secondary text-sm">No stocks in portfolio yet</p>
+                                        <p className="text-text-secondary text-xs mt-1">Click on a stock to start investing!</p>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Market Sentiment */}
@@ -207,3 +273,20 @@ export const Market: React.FC = () => {
         </div>
     );
 };
+
+// Helper function to generate SVG path from price history
+function generateSparklinePath(prices: number[]): string {
+    if (prices.length < 2) return '';
+
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    const range = max - min || 1;
+
+    const points = prices.map((price, i) => {
+        const x = (i / (prices.length - 1)) * 100;
+        const y = 30 - ((price - min) / range) * 25;
+        return `${x},${y}`;
+    });
+
+    return `M${points.join(' L')}`;
+}

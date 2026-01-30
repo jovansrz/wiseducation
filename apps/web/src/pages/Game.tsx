@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 export const Game: React.FC = () => {
     return (
@@ -42,14 +43,14 @@ export const Game: React.FC = () => {
                         <h2 className="text-white text-xl font-bold">Today's Challenges</h2>
                         <a className="text-primary text-sm font-medium hover:underline" href="#">View All</a>
                     </div>
-                    {/* Game Card 1 */}
-                    <div className="group relative flex flex-col md:flex-row overflow-hidden rounded-xl bg-card-dark border border-card-border shadow-lg transition-all hover:border-primary/50 hover:shadow-primary/5">
+                    {/* Game Card 1 - Investment Tetris */}
+                    <Link to="/game/tetris" className="group relative flex flex-col md:flex-row overflow-hidden rounded-xl bg-card-dark border border-card-border shadow-lg transition-all hover:border-primary/50 hover:shadow-primary/5 cursor-pointer">
                         <div
                             className="w-full md:w-64 h-48 md:h-auto bg-cover bg-center shrink-0"
                             style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuBLhzxL8RkV2jmFyBRo-0UnycshuUEFLs6CcxG0DHgFO3WaHrWPNVTHH9Jy3PDF1lGYyzcmLqRAoyC3jyS3wBE-Si9FkrPsiGJXsSPAvpV-MisZZ_0XF3EzvDjHFSmY1w2JzNUYk-C0p7xiI2MleJXwnEq2nFLul84lS_M30Z9_aDZleBrjES77IB4P7VflW2RMOPzyg-_G21kvtzHqOgEie3h3ZcY9okLa4VsTzM9DaJ2xZG4CTFmZwRG2E7yisoTU5hfk_cJFhyg')" }}
                         >
-                            <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm px-2 py-1 rounded text-xs font-medium text-white flex items-center gap-1">
-                                <span className="material-symbols-outlined text-sm">stars</span> Popular
+                            <div className="absolute top-3 left-3 bg-primary/90 backdrop-blur-sm px-2 py-1 rounded text-xs font-medium text-white flex items-center gap-1">
+                                <span className="material-symbols-outlined text-sm">play_arrow</span> Play Now
                             </div>
                         </div>
                         <div className="flex flex-1 flex-col justify-between p-6">
@@ -61,23 +62,27 @@ export const Game: React.FC = () => {
                                         <span className="text-sm font-medium text-white">4.8</span>
                                     </div>
                                 </div>
-                                <p className="text-text-secondary text-sm mb-4 line-clamp-2">Strategically fit assets into the right portfolio slots to maximize returns and minimize risk.</p>
+                                <p className="text-text-secondary text-sm mb-4 line-clamp-2">Clear lines to earn virtual cash! Get bonus rewards with combos. Tetris = Rp 600!</p>
                                 <div className="flex flex-wrap gap-2 mb-4">
-                                    <span className="px-2 py-1 bg-card-border rounded text-xs text-gray-300 font-medium">Medium</span>
+                                    <span className="px-2 py-1 bg-primary/20 border border-primary/30 rounded text-xs text-primary font-medium">Rewards</span>
                                     <span className="px-2 py-1 bg-card-border rounded text-xs text-gray-300 font-medium">Strategy</span>
+                                    <span className="px-2 py-1 bg-card-border rounded text-xs text-gray-300 font-medium">Classic</span>
                                 </div>
                             </div>
                             <div className="flex items-center justify-between mt-2 pt-4 border-t border-card-border">
-                                <div className="flex items-center gap-2 text-primary">
-                                    <span className="material-symbols-outlined text-lg">toll</span>
-                                    <span className="font-bold text-sm">+500 Coins</span>
+                                <div className="flex items-center gap-3 text-sm">
+                                    <div className="flex items-center gap-1 text-yellow-400">
+                                        <span className="material-symbols-outlined text-lg">toll</span>
+                                        <span className="font-bold">Rp 50-600</span>
+                                    </div>
+                                    <span className="text-gray-500">per clear</span>
                                 </div>
-                                <button className="bg-primary hover:bg-primary/90 text-white text-sm font-bold py-2 px-6 rounded-lg transition-all shadow-[0_0_10px_rgba(43,161,149,0.3)] hover:shadow-[0_0_15px_rgba(43,161,149,0.5)]">
+                                <div className="bg-primary hover:bg-primary/90 text-white text-sm font-bold py-2 px-6 rounded-lg transition-all shadow-[0_0_10px_rgba(43,161,149,0.3)] group-hover:shadow-[0_0_15px_rgba(43,161,149,0.5)]">
                                     Play Now
-                                </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    </Link>
                     {/* Game Card 2 */}
                     <div className="group relative flex flex-col md:flex-row overflow-hidden rounded-xl bg-card-dark border border-card-border shadow-lg transition-all hover:border-primary/50 hover:shadow-primary/5">
                         <div

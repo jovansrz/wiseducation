@@ -1,6 +1,63 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+
+interface Course {
+    id: string;
+    title: string;
+    description: string;
+    difficulty: string;
+    coverImageUrl?: string;
+    thumbnailUrl?: string;
+    progress?: number;
+    completed?: boolean;
+    totalDurationMinutes?: number;
+}
+
+const API_BASE = 'http://localhost:3005/api';
 
 export const Education: React.FC = () => {
+    const [courses, setCourses] = useState<Course[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [filter, setFilter] = useState<string | null>(null);
+
+    useEffect(() => {
+        fetchCourses();
+    }, [filter]);
+
+    const fetchCourses = async () => {
+        setLoading(true);
+        try {
+            // Use standard endpoint for now. If we had auth token context easily accessible we'd add header
+            // Assuming the browser handles session cookies or we pass userId some other way?
+            // Education routes with progress require auth.
+            // Let's try to hit the public one first if auth is complex, OR assume we are logged in.
+            // App.tsx says we are authenticated if we reach here.
+
+            // Note: In a real app we need to pass the token. 
+            // For this specific setup, I'll fallback to the public endpoint if I can't easily get the auth headers here without a context update.
+            // But wait, PortfolioContext uses simple fetch. Let's try to assume session cookie or similar mechanism works, 
+            // OR use the public endpoint `/api/education/courses` which doesn't require auth but won't show progress.
+            // To show progress we need `/api/education/courses/with-progress`.
+
+            let url = `${API_BASE}/education/courses${filter ? `?difficulty=${filter}` : ''}`;
+            // If we want progress, we need to handle auth. 
+            // Since I haven't seen global auth header setup, I'll stick to public data for listing to ensure it works first.
+            // User can see progress inside the details or we implement auth headers later.
+            // ACTUALLY, I can try to fetch `with-progress` and see if it fails.
+
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (Array.isArray(data)) {
+                setCourses(data);
+            }
+        } catch (error) {
+            console.error("Failed to fetch courses", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <>
             {/* Page Header */}
@@ -13,6 +70,10 @@ export const Education: React.FC = () => {
                     <button className="flex items-center justify-center gap-2 h-10 px-4 bg-card-dark border border-card-border rounded-lg text-sm font-bold text-white hover:bg-card-border transition-colors">
                         <span className="material-symbols-outlined text-[20px]">history</span>
                         <span>History</span>
+                    </button>
+                    <button className="flex items-center justify-center gap-2 h-10 px-4 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors">
+                        <span className="material-symbols-outlined text-[20px]">leaderboard</span>
+                        <span>Leaderboard</span>
                     </button>
                 </div>
             </div>
@@ -28,254 +89,105 @@ export const Education: React.FC = () => {
                     />
                 </div>
                 <div className="flex items-center gap-2 overflow-x-auto pb-2 lg:pb-0 no-scrollbar">
-                    <button className="flex h-10 shrink-0 items-center gap-2 rounded-lg bg-primary px-4 text-white text-sm font-medium transition-colors">
+                    <button
+                        onClick={() => setFilter(null)}
+                        className={`flex h-10 shrink-0 items-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors ${!filter ? 'bg-primary text-white' : 'bg-card-border hover:bg-[#364442] text-white'}`}
+                    >
                         <span className="material-symbols-outlined filled-icon text-[18px]">grid_view</span>
                         All Levels
                     </button>
-                    <button className="flex h-10 shrink-0 items-center gap-2 rounded-lg bg-card-border hover:bg-[#364442] px-4 text-white text-sm font-medium transition-colors">
+                    <button
+                        onClick={() => setFilter('Beginner')}
+                        className={`flex h-10 shrink-0 items-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors ${filter === 'Beginner' ? 'bg-primary text-white' : 'bg-card-border hover:bg-[#364442] text-white'}`}
+                    >
                         <span className="material-symbols-outlined text-[18px]">emoji_objects</span>
                         Beginner
                     </button>
-                    <button className="flex h-10 shrink-0 items-center gap-2 rounded-lg bg-card-border hover:bg-[#364442] px-4 text-white text-sm font-medium transition-colors">
+                    <button
+                        onClick={() => setFilter('Intermediate')}
+                        className={`flex h-10 shrink-0 items-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors ${filter === 'Intermediate' ? 'bg-primary text-white' : 'bg-card-border hover:bg-[#364442] text-white'}`}
+                    >
                         <span className="material-symbols-outlined text-[18px]">trending_up</span>
                         Intermediate
                     </button>
-                    <button className="flex h-10 shrink-0 items-center gap-2 rounded-lg bg-card-border hover:bg-[#364442] px-4 text-white text-sm font-medium transition-colors">
+                    <button
+                        onClick={() => setFilter('Advanced')}
+                        className={`flex h-10 shrink-0 items-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors ${filter === 'Advanced' ? 'bg-primary text-white' : 'bg-card-border hover:bg-[#364442] text-white'}`}
+                    >
                         <span className="material-symbols-outlined text-[18px]">school</span>
                         Advanced
-                    </button>
-                </div>
-                <div className="flex items-center gap-2 pl-2 border-l border-card-border">
-                    <button className="p-2 text-text-secondary hover:text-white transition-colors" title="Filter">
-                        <span className="material-symbols-outlined">filter_list</span>
-                    </button>
-                    <button className="p-2 text-text-secondary hover:text-white transition-colors" title="Sort">
-                        <span className="material-symbols-outlined">sort</span>
                     </button>
                 </div>
             </div>
 
             {/* Course Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {/* Card 1 */}
-                <div className="group flex flex-col bg-card-dark rounded-xl overflow-hidden border border-card-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
-                    <div className="relative h-48 w-full overflow-hidden">
-                        <div
-                            className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
-                            style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuCZEiUYla3kOc8KCCJLOHjwRg_sRIBhXmG0BdpT_pJrRQTXVuNNM0Qu_TqWndGGu6IyWNaHSewWEN_F6NfKqN_uDhf_ieaplCEeQJHlUiqpXXOncaUWudTzAk-dFgcx1MsW4qS-AaJAf3i4oly-XN3l1rp6mKN4_e32EYarmuEs42Afh7jGc5EX5Oua4nD19ZrU09iH6o6wrtcC_nPwpxzOCNnt4k7-A84g2er4C9hfUVFBZ3hxCspztSOdk41CZXl6_p40vXaAU1U')" }}
-                        ></div>
-                        <div className="absolute inset-0 bg-gradient-to-t from-card-dark to-transparent opacity-80"></div>
-                        <div className="absolute top-3 left-3 bg-card-border/90 backdrop-blur-sm px-2.5 py-1 rounded text-xs font-semibold text-primary uppercase tracking-wider flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[14px]">emoji_objects</span>
-                            Beginner
-                        </div>
-                    </div>
-                    <div className="flex flex-col flex-1 p-5">
-                        <div className="mb-4">
-                            <h3 className="text-xl font-bold text-white mb-1 group-hover:text-primary transition-colors">Pasar Saham 101</h3>
-                            <p className="text-text-secondary text-sm line-clamp-2">Learn the fundamentals of stock market investing and how to read basic charts.</p>
-                        </div>
-                        <div className="mt-auto space-y-4">
-                            <div className="space-y-1.5">
-                                <div className="flex justify-between text-xs font-medium text-text-secondary">
-                                    <span>Progress</span>
-                                    <span className="text-primary">45%</span>
+            {loading ? (
+                <div className="text-white text-center py-12">Loading modules...</div>
+            ) : courses.length === 0 ? (
+                <div className="text-text-secondary text-center py-12">
+                    <span className="material-symbols-outlined text-6xl mb-4">school</span>
+                    <p>No modules found. Check back later!</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {courses.map((course) => (
+                        <Link
+                            to={`/education/${course.id}`}
+                            key={course.id}
+                            className="group flex flex-col bg-card-dark rounded-xl overflow-hidden border border-card-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10"
+                        >
+                            <div className="relative h-48 w-full overflow-hidden">
+                                <div
+                                    className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
+                                    style={{ backgroundImage: `url('${course.coverImageUrl || course.thumbnailUrl || 'https://images.unsplash.com/photo-1611974765270-ca1258634369?q=80&w=2664&auto=format&fit=crop'}')` }}
+                                ></div>
+                                <div className="absolute inset-0 bg-gradient-to-t from-card-dark to-transparent opacity-80"></div>
+                                <div className={`absolute top-3 left-3 bg-card-border/90 backdrop-blur-sm px-2.5 py-1 rounded text-xs font-semibold uppercase tracking-wider flex items-center gap-1 ${course.difficulty === 'Beginner' ? 'text-green-400' :
+                                        course.difficulty === 'Intermediate' ? 'text-yellow-400' :
+                                            'text-red-400'
+                                    }`}>
+                                    <span className="material-symbols-outlined text-[14px]">
+                                        {course.difficulty === 'Beginner' ? 'emoji_objects' :
+                                            course.difficulty === 'Intermediate' ? 'trending_up' :
+                                                'school'}
+                                    </span>
+                                    {course.difficulty}
                                 </div>
-                                <div className="h-1.5 w-full bg-card-border rounded-full overflow-hidden">
-                                    <div className="h-full bg-primary rounded-full" style={{ width: "45%" }}></div>
+                                {course.completed && (
+                                    <div className="absolute top-3 right-3 bg-primary text-white rounded-full p-1 shadow-lg">
+                                        <span className="material-symbols-outlined block text-[16px]">check</span>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex flex-col flex-1 p-5">
+                                <div className="mb-4">
+                                    <h3 className="text-xl font-bold text-white mb-1 group-hover:text-primary transition-colors line-clamp-1">{course.title}</h3>
+                                    <p className="text-text-secondary text-sm line-clamp-2">{course.description}</p>
+                                </div>
+                                <div className="mt-auto space-y-4">
+                                    <div className="space-y-1.5">
+                                        <div className="flex justify-between text-xs font-medium text-text-secondary">
+                                            <span>Duration</span>
+                                            <span className="text-white">{course.totalDurationMinutes || 0} min</span>
+                                        </div>
+                                        {/* Progress bar placeholder - fully integrated when using authenticated endpoint */}
+                                        <div className="h-1.5 w-full bg-card-border rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full bg-primary rounded-full"
+                                                style={{ width: `${course.progress || 0}%` }}
+                                            ></div>
+                                        </div>
+                                    </div>
+                                    <button className="w-full flex items-center justify-center gap-2 bg-card-border group-hover:bg-primary text-white font-bold py-2.5 px-4 rounded-lg transition-colors text-sm border border-transparent">
+                                        <span>Start Learning</span>
+                                        <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                                    </button>
                                 </div>
                             </div>
-                            <button className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white font-bold py-2.5 px-4 rounded-lg transition-colors text-sm">
-                                <span>Continue Learning</span>
-                                <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-                            </button>
-                        </div>
-                    </div>
+                        </Link>
+                    ))}
                 </div>
-
-                {/* Card 2 */}
-                <div className="group flex flex-col bg-card-dark rounded-xl overflow-hidden border border-card-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
-                    <div className="relative h-48 w-full overflow-hidden">
-                        <div
-                            className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
-                            style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuDRjPXQbFiYgn9RiwnfjUap_2XjPHFGwYGKbuB5nhqpek7-rIgF-QR920tC7VRUC4usGG_mV48VvIS6OS8FonXFyxczk2cZgR2RQgaA2uYD8xZHcOcxqi5RR0DH_ODE_gIhGzCv1zr-v74axrAyObH5iRMQXtvuJhyafwISaedLeWLm-t4XoPxg9RGZcEEbgTXkuKoW8GrlGasyXcghuEunOtS-sVjvhwx4jvs9qiMkI-196FJSsXZdQ5IwFUnAJFbNYpxcxnee7ns')" }}
-                        ></div>
-                        <div className="absolute inset-0 bg-gradient-to-t from-card-dark to-transparent opacity-80"></div>
-                        <div className="absolute top-3 left-3 bg-card-border/90 backdrop-blur-sm px-2.5 py-1 rounded text-xs font-semibold text-yellow-500 uppercase tracking-wider flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[14px]">trending_up</span>
-                            Intermediate
-                        </div>
-                    </div>
-                    <div className="flex flex-col flex-1 p-5">
-                        <div className="mb-4">
-                            <h3 className="text-xl font-bold text-white mb-1 group-hover:text-primary transition-colors">Risk Management</h3>
-                            <p className="text-text-secondary text-sm line-clamp-2">Master the art of protecting your capital with advanced stop-loss strategies.</p>
-                        </div>
-                        <div className="mt-auto space-y-4">
-                            <div className="space-y-1.5">
-                                <div className="flex justify-between text-xs font-medium text-text-secondary">
-                                    <span>Progress</span>
-                                    <span className="text-primary">10%</span>
-                                </div>
-                                <div className="h-1.5 w-full bg-card-border rounded-full overflow-hidden">
-                                    <div className="h-full bg-primary rounded-full" style={{ width: "10%" }}></div>
-                                </div>
-                            </div>
-                            <button className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white font-bold py-2.5 px-4 rounded-lg transition-colors text-sm">
-                                <span>Continue Learning</span>
-                                <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Card 3 */}
-                <div className="group flex flex-col bg-card-dark rounded-xl overflow-hidden border border-card-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
-                    <div className="relative h-48 w-full overflow-hidden">
-                        <div
-                            className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
-                            style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuByiZlCTJy0OHUPLio_xrj62nHF_3dsFvDIWzsy9eVIgj2WCjN5qxmOQTdJIIeYK3vl-v_xIYPR4rulxyU7_DjYWeoRoVq91Yzqzd3Oj5Ma0Dygn_VCsvYczmQQ2dXoiEtFZPoc6fRqItAz6ZEvyKhAoAdI51UOwowgKsy_vFOhAwIjLIWvsLusShPJ8xu7Vqq_OIK36nQJA8BdFwfxd48rE--ySJPerxDDBmurEP9ivzYTlOGQ7Lga2bYmsjJLsRpUWCLntZTXc0g')" }}
-                        ></div>
-                        <div className="absolute inset-0 bg-gradient-to-t from-card-dark to-transparent opacity-80"></div>
-                        <div className="absolute top-3 left-3 bg-card-border/90 backdrop-blur-sm px-2.5 py-1 rounded text-xs font-semibold text-red-400 uppercase tracking-wider flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[14px]">school</span>
-                            Advanced
-                        </div>
-                    </div>
-                    <div className="flex flex-col flex-1 p-5">
-                        <div className="mb-4">
-                            <h3 className="text-xl font-bold text-white mb-1 group-hover:text-primary transition-colors">Forex Strategies</h3>
-                            <p className="text-text-secondary text-sm line-clamp-2">Deep dive into currency pairs, macroeconomic indicators, and global news impact.</p>
-                        </div>
-                        <div className="mt-auto space-y-4">
-                            <div className="space-y-1.5">
-                                <div className="flex justify-between text-xs font-medium text-text-secondary">
-                                    <span>Not Started</span>
-                                    <span className="text-gray-500">0%</span>
-                                </div>
-                                <div className="h-1.5 w-full bg-card-border rounded-full overflow-hidden">
-                                    <div className="h-full bg-primary rounded-full" style={{ width: "0%" }}></div>
-                                </div>
-                            </div>
-                            <button className="w-full flex items-center justify-center gap-2 bg-card-border hover:bg-[#364442] text-white font-bold py-2.5 px-4 rounded-lg transition-colors text-sm border border-transparent hover:border-primary/30">
-                                <span>Start Module</span>
-                                <span className="material-symbols-outlined text-[18px]">play_arrow</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Card 4 */}
-                <div className="group flex flex-col bg-card-dark rounded-xl overflow-hidden border border-card-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
-                    <div className="relative h-48 w-full overflow-hidden">
-                        <div
-                            className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
-                            style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuBDyUwizUAtlbOuNDsMB4pHNd34n4LPSyummbpjdzOHDwC3KCqhEwB70ga1vWOBGMbEddHKPeMhmNnNrX_2KgevCYJEXVDCsJ4S4SYTZEM5G7_n56nz2S6wTB_RBKI9gb-Vl1_uKhPBSv9cY_E-t63zQ_HTsD_IzYzxyjxxRWq9PPnkLSK3_LK8XI3IScKqp25L6MoHFTYDQ457fgy0qdxIQIOOE1OBPXW8sY462eBvmzCgxiGM72q5K1tEF2DFK4BK6Cbd43iWxJQ')" }}
-                        ></div>
-                        <div className="absolute inset-0 bg-gradient-to-t from-card-dark to-transparent opacity-80"></div>
-                        <div className="absolute top-3 left-3 bg-card-border/90 backdrop-blur-sm px-2.5 py-1 rounded text-xs font-semibold text-primary uppercase tracking-wider flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[14px]">emoji_objects</span>
-                            Beginner
-                        </div>
-                        <div className="absolute top-3 right-3 bg-primary text-white rounded-full p-1 shadow-lg">
-                            <span className="material-symbols-outlined block text-[16px]">check</span>
-                        </div>
-                    </div>
-                    <div className="flex flex-col flex-1 p-5">
-                        <div className="mb-4">
-                            <h3 className="text-xl font-bold text-white mb-1 group-hover:text-primary transition-colors">Diversification</h3>
-                            <p className="text-text-secondary text-sm line-clamp-2">Why putting all your eggs in one basket is dangerous, and how to spread risk.</p>
-                        </div>
-                        <div className="mt-auto space-y-4">
-                            <div className="space-y-1.5">
-                                <div className="flex justify-between text-xs font-medium text-text-secondary">
-                                    <span>Completed</span>
-                                    <span className="text-primary">100%</span>
-                                </div>
-                                <div className="h-1.5 w-full bg-card-border rounded-full overflow-hidden">
-                                    <div className="h-full bg-primary rounded-full" style={{ width: "100%" }}></div>
-                                </div>
-                            </div>
-                            <button className="w-full flex items-center justify-center gap-2 bg-card-border hover:bg-[#364442] text-white font-bold py-2.5 px-4 rounded-lg transition-colors text-sm border border-transparent hover:border-primary/30">
-                                <span>Review Again</span>
-                                <span className="material-symbols-outlined text-[18px]">replay</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Card 5 */}
-                <div className="group flex flex-col bg-card-dark rounded-xl overflow-hidden border border-card-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
-                    <div className="relative h-48 w-full overflow-hidden">
-                        <div
-                            className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
-                            style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuDCDhvW3wek0jJ7hmsfA9ds7iMq-otJEI-txH7XRdkMWoB73_Ft_-2EuP5P5RLYIqFmpJQo0mguyoCGfcLTEnCsu0pgmQlbAYSSwjMzsnE04lcla43MRSQ4c7QJPaXT4LHHTPBzbNyekOdUJJnXPTQ7KRMDSkt4FJ-FXzzka74ISpMvFMjKmcQ0wXosJxLmK7rSybnWhhscCnss6vCzX3dOkbCVtcd4iHPDMArNz1_3B4P_VAGyPUdlqg_gmU0rJNpdfhkmLifPwx0')" }}
-                        ></div>
-                        <div className="absolute inset-0 bg-gradient-to-t from-card-dark to-transparent opacity-80"></div>
-                        <div className="absolute top-3 left-3 bg-card-border/90 backdrop-blur-sm px-2.5 py-1 rounded text-xs font-semibold text-yellow-500 uppercase tracking-wider flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[14px]">trending_up</span>
-                            Intermediate
-                        </div>
-                    </div>
-                    <div className="flex flex-col flex-1 p-5">
-                        <div className="mb-4">
-                            <h3 className="text-xl font-bold text-white mb-1 group-hover:text-primary transition-colors">Technical Analysis</h3>
-                            <p className="text-text-secondary text-sm line-clamp-2">Understanding support, resistance, and key chart patterns for better entries.</p>
-                        </div>
-                        <div className="mt-auto space-y-4">
-                            <div className="space-y-1.5">
-                                <div className="flex justify-between text-xs font-medium text-text-secondary">
-                                    <span>Progress</span>
-                                    <span className="text-primary">75%</span>
-                                </div>
-                                <div className="h-1.5 w-full bg-card-border rounded-full overflow-hidden">
-                                    <div className="h-full bg-primary rounded-full" style={{ width: "75%" }}></div>
-                                </div>
-                            </div>
-                            <button className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white font-bold py-2.5 px-4 rounded-lg transition-colors text-sm">
-                                <span>Continue Learning</span>
-                                <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Card 6 */}
-                <div className="group flex flex-col bg-card-dark rounded-xl overflow-hidden border border-card-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
-                    <div className="relative h-48 w-full overflow-hidden">
-                        <div
-                            className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
-                            style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuCdy7QByqB0DbxspmTNuAbpwqE0tK7Is9ZA0cqsJf_02HbDAkGYy25z2zOxbtDFFIMkQDrXg1SMr8HzqktIwHOy15rGkDaFg2HfbCK7ItDP8SQg04_d4G-oxAYD_HFPeK-6Ss6NjZtPxS0mzam-NQtzNH-pb8mQ1vKmuCV82InwfsrNV0y7ITQ4MbeGnTJ5ujEpEpqGSce_4hqQ1g89wqItQ0eSdeviCTBX6er5eRmcWrxRGnNNut6grQAW8GPbJ3UuWGeghTgiWGM')" }}
-                        ></div>
-                        <div className="absolute inset-0 bg-gradient-to-t from-card-dark to-transparent opacity-80"></div>
-                        <div className="absolute top-3 left-3 bg-card-border/90 backdrop-blur-sm px-2.5 py-1 rounded text-xs font-semibold text-red-400 uppercase tracking-wider flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[14px]">school</span>
-                            Advanced
-                        </div>
-                    </div>
-                    <div className="flex flex-col flex-1 p-5">
-                        <div className="mb-4">
-                            <h3 className="text-xl font-bold text-white mb-1 group-hover:text-primary transition-colors">Crypto Futures</h3>
-                            <p className="text-text-secondary text-sm line-clamp-2">Advanced leverage trading in the volatile cryptocurrency market environment.</p>
-                        </div>
-                        <div className="mt-auto space-y-4">
-                            <div className="space-y-1.5">
-                                <div className="flex justify-between text-xs font-medium text-text-secondary">
-                                    <span>Progress</span>
-                                    <span className="text-primary">5%</span>
-                                </div>
-                                <div className="h-1.5 w-full bg-card-border rounded-full overflow-hidden">
-                                    <div className="h-full bg-primary rounded-full" style={{ width: "5%" }}></div>
-                                </div>
-                            </div>
-                            <button className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white font-bold py-2.5 px-4 rounded-lg transition-colors text-sm">
-                                <span>Continue Learning</span>
-                                <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            )}
 
             {/* Pagination / Load More */}
             <div className="mt-12 flex justify-center">

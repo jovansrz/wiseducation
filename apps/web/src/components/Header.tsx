@@ -1,6 +1,13 @@
 import React from 'react';
+import { usePortfolio } from '../context/PortfolioContext';
 
 export const Header: React.FC = () => {
+    const { virtualCash } = usePortfolio();
+
+    const formatCurrency = (value: number) => {
+        return new Intl.NumberFormat('id-ID').format(Math.round(value));
+    };
+
     return (
         <header className="flex h-16 items-center justify-between border-b border-card-border bg-background-dark/80 px-6 backdrop-blur-md sticky top-0 z-20">
             {/* Mobile Menu Toggle */}
@@ -13,7 +20,7 @@ export const Header: React.FC = () => {
                 <span className="material-symbols-outlined text-primary">account_balance_wallet</span>
                 <div className="flex flex-col">
                     <span className="text-[10px] uppercase font-bold text-text-secondary tracking-wider">Virtual Balance</span>
-                    <span className="text-sm font-bold text-white tracking-wide">Rp 10,000,000</span>
+                    <span className="text-sm font-bold text-white tracking-wide">Rp {formatCurrency(virtualCash)}</span>
                 </div>
             </div>
 

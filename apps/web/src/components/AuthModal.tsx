@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 interface AuthModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onLogin: () => void;
+    onLogin: (email?: string, password?: string, name?: string) => void;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
@@ -40,11 +40,42 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
                     </button>
                 </div>
 
-                <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); onLogin(); }}>
+                <form className="space-y-4" onSubmit={async (e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.currentTarget);
+                    const name = formData.get('name') as string;
+                    const email = formData.get('email') as string;
+                    const password = formData.get('password') as string;
+
+                    if (isLogin) {
+                        await onLogin(email, password); // Pass credentials to parent handler
+                    } else {
+                        // For registration, we might handle it here or pass up.
+                        // For now let's assume parent handles it or we do it here.
+                        // Let's pass to onLogin (which we will rename/refactor in App later) 
+                        // OR better: handle it right here if we import authClient.
+                        // But to respect the props interface, let's update the interface first.
+                        await onLogin(email, password, name);
+                    }
+                }}>
+                    {!isLogin && (
+                        <div>
+                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Full Name</label>
+                            <input
+                                name="name"
+                                type="text"
+                                required
+                                className="w-full bg-[#0f1f1e] border border-[#2b3635] rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-[#30b8aa] focus:ring-1 focus:ring-[#30b8aa] transition-all"
+                                placeholder="John Doe"
+                            />
+                        </div>
+                    )}
                     <div>
                         <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Email</label>
                         <input
+                            name="email"
                             type="email"
+                            required
                             className="w-full bg-[#0f1f1e] border border-[#2b3635] rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-[#30b8aa] focus:ring-1 focus:ring-[#30b8aa] transition-all"
                             placeholder="name@example.com"
                         />
@@ -52,7 +83,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
                     <div>
                         <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Password</label>
                         <input
+                            name="password"
                             type="password"
+                            required
                             className="w-full bg-[#0f1f1e] border border-[#2b3635] rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-[#30b8aa] focus:ring-1 focus:ring-[#30b8aa] transition-all"
                             placeholder="••••••••"
                         />
@@ -62,6 +95,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
                         <div>
                             <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Referral Code (Optional)</label>
                             <input
+                                name="referral"
                                 type="text"
                                 className="w-full bg-[#0f1f1e] border border-[#2b3635] rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-[#30b8aa] focus:ring-1 focus:ring-[#30b8aa] transition-all"
                                 placeholder="WISE-2024"
