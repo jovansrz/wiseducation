@@ -1,6 +1,6 @@
 import { pgTable, text, integer, timestamp, jsonb, boolean } from "drizzle-orm/pg-core";
-import { course } from "./course.js";
-import { user } from "./auth.js";
+import { course } from "./course";
+import { user } from "./auth";
 
 // Quiz table - each course can have one quiz
 export const quiz = pgTable("quiz", {

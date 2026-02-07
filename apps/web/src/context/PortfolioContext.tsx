@@ -35,6 +35,7 @@ export interface PortfolioContextType extends PortfolioState {
     updateHoldingPrice: (ticker: string, newPrice: number) => void;
     getHolding: (ticker: string) => StockHolding | undefined;
     resetPortfolio: () => Promise<void>;
+    refreshPortfolio: () => Promise<void>;
     isLoading: boolean;
 }
 
@@ -53,45 +54,46 @@ export function PortfolioProvider({ children, userId }: { children: ReactNode; u
     const [isLoading, setIsLoading] = useState(false);
 
     // Fetch portfolio from API
-    useEffect(() => {
+    // Fetch portfolio from API
+    const fetchPortfolio = async () => {
         if (!userId) {
             setPortfolio(defaultPortfolio);
             return;
         }
 
-        const fetchPortfolio = async () => {
-            setIsLoading(true);
-            try {
-                const response = await fetch(`${API_Base}/api/portfolio?userId=${userId}`);
-                if (!response.ok) throw new Error('Failed to fetch portfolio');
-                const data = await response.json();
+        setIsLoading(true);
+        try {
+            const response = await fetch(`${API_Base}/api/portfolio?userId=${userId}`);
+            if (!response.ok) throw new Error('Failed to fetch portfolio');
+            const data = await response.json();
 
-                // Transform data if needed, e.g. dates
-                // Assuming API returns transaction dates as strings
-                const transactions = data.transactions.map((t: any) => ({
-                    ...t,
-                    timestamp: new Date(t.timestamp)
-                }));
-                // BE returns holdings. we need to map to FE StockHolding
-                // BE holding: { ticker, name, quantity, averagePrice }
-                // FE needs currentPrice too, init with averagePrice or 0
-                const holdings = data.holdings.map((h: any) => ({
-                    ...h,
-                    currentPrice: h.currentPrice || h.averagePrice // fallback
-                }));
+            // Transform data if needed, e.g. dates
+            // Assuming API returns transaction dates as strings
+            const transactions = data.transactions.map((t: any) => ({
+                ...t,
+                timestamp: new Date(t.timestamp)
+            }));
+            // BE returns holdings. we need to map to FE StockHolding
+            // BE holding: { ticker, name, quantity, averagePrice }
+            // FE needs currentPrice too, init with averagePrice or 0
+            const holdings = data.holdings.map((h: any) => ({
+                ...h,
+                currentPrice: h.currentPrice || h.averagePrice // fallback
+            }));
 
-                setPortfolio({
-                    virtualCash: data.virtualCash,
-                    holdings,
-                    transactions
-                });
-            } catch (error) {
-                console.error("Error loading portfolio:", error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
+            setPortfolio({
+                virtualCash: data.virtualCash,
+                holdings,
+                transactions
+            });
+        } catch (error) {
+            console.error("Error loading portfolio:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
+    useEffect(() => {
         fetchPortfolio();
     }, [userId]);
 
@@ -211,6 +213,12 @@ export function PortfolioProvider({ children, userId }: { children: ReactNode; u
         }
     };
 
+    const refreshPortfolio = async () => {
+        if (userId) {
+            await fetchPortfolio();
+        }
+    };
+
     return (
         <PortfolioContext.Provider
             value={{
@@ -222,6 +230,7 @@ export function PortfolioProvider({ children, userId }: { children: ReactNode; u
                 updateHoldingPrice,
                 getHolding,
                 resetPortfolio,
+                refreshPortfolio,
                 isLoading
             }}
         >

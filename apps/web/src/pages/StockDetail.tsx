@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { useRealTimeStocks } from '../hooks/useRealTimeStocks';
 import { usePortfolio } from '../context/PortfolioContext';
+import { getHistoricalData, type TimePeriod, type HistoricalDataPoint } from '../services/stockService';
 
 export const StockDetail: React.FC = () => {
     const { ticker } = useParams<{ ticker: string }>();
@@ -14,8 +15,61 @@ export const StockDetail: React.FC = () => {
     const [limitPrice, setLimitPrice] = useState<number>(0);
     const [tradeMessage, setTradeMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+    // Time period and historical data state
+    const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('1D');
+    const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>([]);
+    const [isLoadingChart, setIsLoadingChart] = useState(false);
+
     const stock = stocks.find(s => s.ticker === ticker);
     const holding = ticker ? getHolding(ticker) : undefined;
+
+    // Fetch historical data when ticker or period changes
+    const fetchHistoricalData = useCallback(async () => {
+        if (!ticker) return;
+        setIsLoadingChart(true);
+        try {
+            const data = await getHistoricalData(ticker, selectedPeriod);
+            setHistoricalData(data);
+        } catch (error) {
+            console.error('Failed to fetch historical data:', error);
+        } finally {
+            setIsLoadingChart(false);
+        }
+    }, [ticker, selectedPeriod]);
+
+    useEffect(() => {
+        fetchHistoricalData();
+    }, [fetchHistoricalData]);
+
+    // Generate line chart path from historical data or price history
+    const chartPath = useMemo(() => {
+        const prices = historicalData.length > 0
+            ? historicalData.map(d => d.close)
+            : stock?.priceHistory || [];
+
+        if (prices.length < 2) return '';
+
+        const min = Math.min(...prices);
+        const max = Math.max(...prices);
+        const range = max - min || 1;
+        const width = 760;
+        const height = 320;
+        const padding = 20;
+
+        const points = prices.map((price, i) => {
+            const x = padding + (i / (prices.length - 1)) * (width - padding * 2);
+            const y = padding + (height - padding * 2) - ((price - min) / range) * (height - padding * 2);
+            return `${x},${y}`;
+        });
+
+        return `M${points.join(' L')}`;
+    }, [historicalData, stock?.priceHistory]);
+
+    // Generate area fill path
+    const areaPath = useMemo(() => {
+        if (!chartPath) return '';
+        return `${chartPath} L760,320 L20,320 Z`;
+    }, [chartPath]);
 
     // Get recent transactions for this stock
     const stockTransactions = useMemo(() =>
@@ -32,7 +86,7 @@ export const StockDetail: React.FC = () => {
     const colorClass = isNeutral ? 'text-text-secondary' : isPositive ? 'text-primary' : 'text-red-500';
     const arrowIcon = isNeutral ? 'remove' : isPositive ? 'arrow_drop_up' : 'arrow_drop_down';
     const sign = isPositive ? '+' : '';
-    const candleColor = isPositive ? '#2ba094' : '#ef4444';
+    const lineColor = isPositive ? '#2ba094' : '#ef4444';
 
     const currentPrice = limitType === 'Market' ? stock.price : limitPrice || stock.price;
     const totalCost = quantity * 100 * currentPrice; // 1 lot = 100 shares
@@ -73,7 +127,7 @@ export const StockDetail: React.FC = () => {
             {/* Header */}
             <header className="h-16 flex items-center justify-between px-6 border-b border-card-border bg-background-light dark:bg-background-dark shrink-0">
                 <div className="hidden md:flex items-center text-sm text-text-secondary">
-                    <span>Simulasi</span>
+                    <span>Simulation</span>
                     <span className="material-symbols-outlined text-sm mx-1">chevron_right</span>
                     <span className="text-slate-900 dark:text-white font-medium">{stock.ticker} Detail</span>
                     {stock.isLive && (
@@ -89,7 +143,7 @@ export const StockDetail: React.FC = () => {
                         <span className="text-sm font-bold text-slate-900 dark:text-white">Rp {formatCurrency(totalValue)}</span>
                     </div>
                     <div className="flex h-9 items-center rounded-lg bg-background-light dark:bg-card-dark border border-card-border px-3 shadow-sm">
-                        <span className="text-xs text-text-secondary mr-2">Virtual Cash:</span>
+                        <span className="text-xs text-text-secondary mr-2">WISE CASH:</span>
                         <span className="text-sm font-bold text-primary">Rp {formatCurrency(virtualCash)}</span>
                     </div>
                     <button className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-slate-200 dark:hover:bg-card-border text-text-secondary transition-colors">
@@ -98,9 +152,6 @@ export const StockDetail: React.FC = () => {
                     <button className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-slate-200 dark:hover:bg-card-border text-text-secondary transition-colors">
                         <span className="material-symbols-outlined text-[20px]">help</span>
                     </button>
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center text-white shadow-lg cursor-pointer ml-2">
-                        <span className="material-symbols-outlined text-[20px]">person</span>
-                    </div>
                 </div>
             </header>
 
@@ -129,10 +180,18 @@ export const StockDetail: React.FC = () => {
                             </div>
                         </div>
                         <div className="flex bg-background-light dark:bg-card-dark rounded-lg p-1 border border-card-border self-start md:self-end">
-                            <button className="px-4 py-1.5 rounded-md bg-primary/10 text-primary text-sm font-bold shadow-sm">1D</button>
-                            <button className="px-4 py-1.5 rounded-md text-text-secondary text-sm font-medium hover:text-slate-900 dark:hover:text-white transition-colors">1W</button>
-                            <button className="px-4 py-1.5 rounded-md text-text-secondary text-sm font-medium hover:text-slate-900 dark:hover:text-white transition-colors">1M</button>
-                            <button className="px-4 py-1.5 rounded-md text-text-secondary text-sm font-medium hover:text-slate-900 dark:hover:text-white transition-colors">1Y</button>
+                            {(['1D', '1W', '1M', '1Y'] as TimePeriod[]).map((period) => (
+                                <button
+                                    key={period}
+                                    onClick={() => setSelectedPeriod(period)}
+                                    className={`px-4 py-1.5 rounded-md text-sm font-bold transition-colors ${selectedPeriod === period
+                                        ? 'bg-primary/10 text-primary shadow-sm'
+                                        : 'text-text-secondary hover:text-slate-900 dark:hover:text-white'
+                                        }`}
+                                >
+                                    {period}
+                                </button>
+                            ))}
                         </div>
                     </div>
 
@@ -149,44 +208,89 @@ export const StockDetail: React.FC = () => {
                                         <span className="text-xs font-bold">C: <span className={colorClass}>{formatCurrency(stock.price)}</span></span>
                                     </div>
                                 </div>
-                                <div className="flex gap-2">
+                                <div className="flex gap-2 items-center">
+                                    {isLoadingChart && (
+                                        <span className="text-xs text-text-secondary flex items-center gap-1">
+                                            <span className="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
+                                            Loading...
+                                        </span>
+                                    )}
                                     <button className="p-1 hover:bg-background-light dark:hover:bg-card-border rounded text-text-secondary">
-                                        <span className="material-symbols-outlined text-[18px]">add</span>
-                                    </button>
-                                    <button className="p-1 hover:bg-background-light dark:hover:bg-card-border rounded text-text-secondary">
-                                        <span className="material-symbols-outlined text-[18px]">remove</span>
+                                        <span className="material-symbols-outlined text-[18px]">refresh</span>
                                     </button>
                                 </div>
                             </div>
-                            <div className="flex-1 w-full relative">
+                            <div className="flex-1 w-full relative min-h-[350px]">
                                 <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 800 400">
                                     <defs>
                                         <pattern height="50" id="grid" patternUnits="userSpaceOnUse" width="100">
                                             <path d="M 100 0 L 0 0 0 50" fill="none" opacity="0.3" stroke="#2b3635" strokeWidth="1"></path>
                                         </pattern>
+                                        <linearGradient id="lineGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                            <stop offset="0%" stopColor={lineColor} stopOpacity="0.3" />
+                                            <stop offset="100%" stopColor={lineColor} stopOpacity="0.02" />
+                                        </linearGradient>
                                     </defs>
                                     <rect fill="url(#grid)" height="100%" width="100%"></rect>
-                                    <path d="M0 280 C 100 270, 200 290, 300 250 S 500 200, 600 180 S 800 150, 800 150" fill="none" opacity="0.5" stroke="#a855f7" strokeWidth="2"></path>
 
-                                    {/* Simplified Dynamic Candle Generation for Visual Rep */}
-                                    {Array.from({ length: 18 }).map((_, i) => (
-                                        <g key={i} transform={`translate(${50 + i * 40}, ${isPositive ? 250 - i * 5 : 50 + i * 10})`}>
-                                            <line stroke={candleColor} strokeWidth="1" x1="10" x2="10" y1="-20" y2="40"></line>
-                                            <rect fill={candleColor} height="30" width="20" x="0" y="0"></rect>
-                                        </g>
-                                    ))}
+                                    {/* Area fill under line */}
+                                    {areaPath && (
+                                        <path
+                                            d={areaPath}
+                                            fill="url(#lineGradient)"
+                                            stroke="none"
+                                        />
+                                    )}
 
-                                    {/* Helper Line */}
-                                    <line stroke={candleColor} strokeDasharray="4 4" strokeWidth="1" x1="0" x2="800" y1="50" y2="50"></line>
-                                    <rect fill={candleColor} height="24" rx="4" width="100" x="700" y="38"></rect>
+                                    {/* Main line chart */}
+                                    {chartPath && (
+                                        <path
+                                            d={chartPath}
+                                            fill="none"
+                                            stroke={lineColor}
+                                            strokeWidth="3"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                        />
+                                    )}
+
+                                    {/* Current price line */}
+                                    <line stroke={lineColor} strokeDasharray="4 4" strokeWidth="1" x1="0" x2="800" y1="50" y2="50"></line>
+                                    <rect fill={lineColor} height="24" rx="4" width="100" x="700" y="38"></rect>
                                     <text fill="white" fontFamily="Lexend" fontSize="12" fontWeight="bold" textAnchor="middle" x="750" y="55">Rp {formatCurrency(stock.price)}</text>
+
+                                    {/* No data message */}
+                                    {!chartPath && !isLoadingChart && (
+                                        <text fill="#6b7280" fontSize="14" textAnchor="middle" x="400" y="200">
+                                            Chart data will load momentarily...
+                                        </text>
+                                    )}
                                 </svg>
                             </div>
-                            {/* Volume Bars Mockup */}
-                            <div className="h-16 w-full border-t border-card-border mt-2 pt-2 flex items-end justify-between px-[50px] opacity-50">
-                                {Array.from({ length: 17 }).map((_, i) => (
-                                    <div key={i} className={`w-4 ${i % 2 === 0 ? 'bg-primary/30' : 'bg-red-500/30'} rounded-t-sm`} style={{ height: `${Math.random() * 60 + 20}%` }}></div>
-                                ))}
+                            {/* Volume Bars */}
+                            <div className="h-16 w-full border-t border-card-border mt-2 pt-2 flex items-end justify-between px-[20px] opacity-50">
+                                {historicalData.length > 0 ? (
+                                    historicalData.map((data, i) => {
+                                        const maxVolume = Math.max(...historicalData.map(d => d.volume));
+                                        const heightPercent = (data.volume / maxVolume) * 80 + 20;
+                                        const isUp = data.close >= data.open;
+                                        return (
+                                            <div
+                                                key={i}
+                                                className={`w-3 ${isUp ? 'bg-primary/40' : 'bg-red-500/40'} rounded-t-sm transition-all`}
+                                                style={{ height: `${heightPercent}%` }}
+                                            ></div>
+                                        );
+                                    })
+                                ) : (
+                                    Array.from({ length: 20 }).map((_, i) => (
+                                        <div
+                                            key={i}
+                                            className={`w-3 ${i % 2 === 0 ? 'bg-primary/40' : 'bg-red-500/40'} rounded-t-sm`}
+                                            style={{ height: `${Math.random() * 60 + 20}%` }}
+                                        ></div>
+                                    ))
+                                )}
                             </div>
                         </div>
 

@@ -27,25 +27,16 @@ export const Education: React.FC = () => {
     const fetchCourses = async () => {
         setLoading(true);
         try {
-            // Use standard endpoint for now. If we had auth token context easily accessible we'd add header
-            // Assuming the browser handles session cookies or we pass userId some other way?
-            // Education routes with progress require auth.
-            // Let's try to hit the public one first if auth is complex, OR assume we are logged in.
-            // App.tsx says we are authenticated if we reach here.
+            // First try to get courses with progress (requires auth)
+            let url = `${API_BASE}/education/courses/with-progress${filter ? `?difficulty=${filter}` : ''}`;
+            let response = await fetch(url, { credentials: 'include' });
 
-            // Note: In a real app we need to pass the token. 
-            // For this specific setup, I'll fallback to the public endpoint if I can't easily get the auth headers here without a context update.
-            // But wait, PortfolioContext uses simple fetch. Let's try to assume session cookie or similar mechanism works, 
-            // OR use the public endpoint `/api/education/courses` which doesn't require auth but won't show progress.
-            // To show progress we need `/api/education/courses/with-progress`.
+            // If auth fails, fallback to public endpoint
+            if (!response.ok) {
+                url = `${API_BASE}/education/courses${filter ? `?difficulty=${filter}` : ''}`;
+                response = await fetch(url);
+            }
 
-            let url = `${API_BASE}/education/courses${filter ? `?difficulty=${filter}` : ''}`;
-            // If we want progress, we need to handle auth. 
-            // Since I haven't seen global auth header setup, I'll stick to public data for listing to ensure it works first.
-            // User can see progress inside the details or we implement auth headers later.
-            // ACTUALLY, I can try to fetch `with-progress` and see if it fails.
-
-            const response = await fetch(url);
             const data = await response.json();
 
             if (Array.isArray(data)) {
@@ -143,8 +134,8 @@ export const Education: React.FC = () => {
                                 ></div>
                                 <div className="absolute inset-0 bg-gradient-to-t from-card-dark to-transparent opacity-80"></div>
                                 <div className={`absolute top-3 left-3 bg-card-border/90 backdrop-blur-sm px-2.5 py-1 rounded text-xs font-semibold uppercase tracking-wider flex items-center gap-1 ${course.difficulty === 'Beginner' ? 'text-green-400' :
-                                        course.difficulty === 'Intermediate' ? 'text-yellow-400' :
-                                            'text-red-400'
+                                    course.difficulty === 'Intermediate' ? 'text-yellow-400' :
+                                        'text-red-400'
                                     }`}>
                                     <span className="material-symbols-outlined text-[14px]">
                                         {course.difficulty === 'Beginner' ? 'emoji_objects' :
@@ -167,13 +158,13 @@ export const Education: React.FC = () => {
                                 <div className="mt-auto space-y-4">
                                     <div className="space-y-1.5">
                                         <div className="flex justify-between text-xs font-medium text-text-secondary">
-                                            <span>Duration</span>
-                                            <span className="text-white">{course.totalDurationMinutes || 0} min</span>
+                                            <span>Progress</span>
+                                            <span className={`${(course.progress || 0) >= 75 ? 'text-green-400' : 'text-white'}`}>{course.progress || 0}%</span>
                                         </div>
-                                        {/* Progress bar placeholder - fully integrated when using authenticated endpoint */}
-                                        <div className="h-1.5 w-full bg-card-border rounded-full overflow-hidden">
+                                        {/* Progress bar */}
+                                        <div className="h-2 w-full bg-card-border rounded-full overflow-hidden">
                                             <div
-                                                className="h-full bg-primary rounded-full"
+                                                className={`h-full rounded-full transition-all duration-500 ${(course.progress || 0) >= 75 ? 'bg-green-500' : 'bg-primary'}`}
                                                 style={{ width: `${course.progress || 0}%` }}
                                             ></div>
                                         </div>

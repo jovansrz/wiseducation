@@ -1,12 +1,41 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRealTimeStocks } from '../hooks/useRealTimeStocks';
 import { usePortfolio } from '../context/PortfolioContext';
+
+type FilterType = 'all' | 'gainers' | 'losers';
 
 export const Market: React.FC = () => {
     const navigate = useNavigate();
     const { stocks, isLoading, lastApiUpdate } = useRealTimeStocks();
     const { virtualCash, totalValue, totalProfit, holdings } = usePortfolio();
+    const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+    const [searchQuery, setSearchQuery] = useState('');
+
+    // Filter stocks based on active filter
+    // Filter stocks based on active filter and search query
+    const filteredStocks = useMemo(() => {
+        let result = stocks;
+
+        // Apply search filter
+        if (searchQuery) {
+            const query = searchQuery.toLowerCase();
+            result = result.filter(s =>
+                s.ticker.toLowerCase().includes(query) ||
+                s.name.toLowerCase().includes(query)
+            );
+        }
+
+        // Apply category filter
+        switch (activeFilter) {
+            case 'gainers':
+                return result.filter(s => s.changePercent > 0);
+            case 'losers':
+                return result.filter(s => s.changePercent < 0);
+            default:
+                return result;
+        }
+    }, [stocks, activeFilter, searchQuery]);
 
     // Format currency for display
     const formatCurrency = (value: number) => {
@@ -18,13 +47,15 @@ export const Market: React.FC = () => {
             {/* Market Header */}
             <header className="h-16 flex items-center justify-between px-6 border-b border-card-border bg-background-light dark:bg-background-dark shrink-0 gap-6">
                 <div className="flex flex-1 items-center gap-8">
-                    <h2 className="text-lg font-bold text-slate-900 dark:text-white hidden md:block whitespace-nowrap">Simulasi Investasi</h2>
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-white hidden md:block whitespace-nowrap">Let's Invest!</h2>
                     <div className="relative w-full max-w-lg hidden md:block">
                         <span className="absolute left-3 top-2.5 text-text-secondary material-symbols-outlined text-[20px]">search</span>
                         <input
                             className="w-full bg-background-light dark:bg-card-dark border border-card-border rounded-lg py-2 pl-10 pr-4 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none shadow-sm transition-all placeholder-text-secondary"
                             placeholder="Search for stocks..."
                             type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
                         />
                         <div className="absolute right-2 top-2 hidden lg:flex gap-1">
                             <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-bold text-text-secondary bg-background-light dark:bg-background-dark border border-card-border rounded">Ctrl</kbd>
@@ -48,16 +79,13 @@ export const Market: React.FC = () => {
                         </div>
                     </div>
                     <div className="flex h-9 items-center rounded-lg bg-background-light dark:bg-card-dark border border-card-border px-3 shadow-sm">
-                        <span className="text-xs text-text-secondary mr-2">Virtual Cash:</span>
+                        <span className="text-xs text-text-secondary mr-2">WISE CASH:</span>
                         <span className="text-sm font-bold text-primary">Rp {formatCurrency(virtualCash)}</span>
                     </div>
                     <button className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-slate-200 dark:hover:bg-card-border text-text-secondary transition-colors relative">
                         <span className="material-symbols-outlined text-[20px]">notifications</span>
                         <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-background-light dark:border-background-dark"></span>
                     </button>
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-emerald-600 flex items-center justify-center text-white shadow-lg cursor-pointer ml-2">
-                        <span className="material-symbols-outlined text-[20px]">person</span>
-                    </div>
                 </div>
             </header>
 
@@ -104,19 +132,33 @@ export const Market: React.FC = () => {
                                 Indonesian Stocks (IDX)
                             </h3>
                             <div className="flex bg-background-light dark:bg-card-dark rounded-lg p-1 border border-card-border">
-                                <button className="px-3 py-1 rounded bg-white dark:bg-card-border text-xs font-bold text-slate-900 dark:text-white shadow-sm">All</button>
-                                <button className="px-3 py-1 rounded text-text-secondary text-xs font-medium hover:text-slate-900 dark:hover:text-white transition-colors">Gainers</button>
-                                <button className="px-3 py-1 rounded text-text-secondary text-xs font-medium hover:text-slate-900 dark:hover:text-white transition-colors">Losers</button>
+                                <button
+                                    onClick={() => setActiveFilter('all')}
+                                    className={`px-3 py-1 rounded text-xs font-bold transition-colors ${activeFilter === 'all' ? 'bg-white dark:bg-card-border text-slate-900 dark:text-white shadow-sm' : 'text-text-secondary hover:text-slate-900 dark:hover:text-white'}`}
+                                >All</button>
+                                <button
+                                    onClick={() => setActiveFilter('gainers')}
+                                    className={`px-3 py-1 rounded text-xs font-bold transition-colors ${activeFilter === 'gainers' ? 'bg-primary/20 text-primary shadow-sm' : 'text-text-secondary hover:text-primary'}`}
+                                >Gainers</button>
+                                <button
+                                    onClick={() => setActiveFilter('losers')}
+                                    className={`px-3 py-1 rounded text-xs font-bold transition-colors ${activeFilter === 'losers' ? 'bg-red-500/20 text-red-500 shadow-sm' : 'text-text-secondary hover:text-red-500'}`}
+                                >Losers</button>
                             </div>
                         </div>
 
                         {/* Stock Grid using Real-Time Data */}
+                        {/* Stock Grid using Real-Time Data */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {stocks.map((stock) => {
+                            {filteredStocks.length === 0 ? (
+                                <div className="col-span-full text-center py-12">
+                                    <span className="material-symbols-outlined text-4xl text-text-secondary mb-2">search_off</span>
+                                    <p className="text-text-secondary">No {activeFilter === 'gainers' ? 'gaining' : 'losing'} stocks at the moment</p>
+                                </div>
+                            ) : filteredStocks.map((stock) => {
                                 const isPositive = stock.changePercent >= 0;
                                 const isNeutral = stock.changePercent === 0;
                                 const colorClass = isNeutral ? 'text-text-secondary' : isPositive ? 'text-primary' : 'text-red-500';
-                                const bgIconClass = isNeutral ? 'bg-gray-200 dark:bg-gray-800' : isPositive ? 'bg-primary/20' : 'bg-red-500/20';
                                 const textIconClass = isNeutral ? 'text-gray-500' : isPositive ? 'text-primary' : 'text-red-500';
                                 const arrowIcon = isNeutral ? 'remove' : isPositive ? 'arrow_drop_up' : 'arrow_drop_down';
                                 const sign = isPositive ? '+' : '';
@@ -142,8 +184,18 @@ export const Market: React.FC = () => {
                                             </div>
                                         )}
                                         <div className="flex items-center gap-4 mb-4 mt-3">
-                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold border ${bgIconClass} ${textIconClass} border-current`}>
-                                                {stock.ticker[0]}
+                                            <div className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden bg-white border border-card-border">
+                                                <img
+                                                    src={stock.logo}
+                                                    alt={stock.ticker}
+                                                    className="w-8 h-8 object-contain"
+                                                    onError={(e) => {
+                                                        // Fallback to ticker initial on error
+                                                        const target = e.target as HTMLImageElement;
+                                                        target.style.display = 'none';
+                                                        target.parentElement!.innerHTML = `<span class="text-sm font-bold ${textIconClass}">${stock.ticker[0]}</span>`;
+                                                    }}
+                                                />
                                             </div>
                                             <div>
                                                 <h4 className="font-bold text-slate-900 dark:text-white leading-tight">{stock.ticker}</h4>

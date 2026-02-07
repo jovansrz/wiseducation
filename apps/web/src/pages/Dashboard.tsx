@@ -2,6 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePortfolio } from '../context/PortfolioContext';
 import { TransactionHistoryModal } from '../components/TransactionHistoryModal';
+import { NewsSection } from '../components/NewsSection';
+
 
 const INITIAL_BALANCE = 10_000_000;
 
@@ -165,6 +167,10 @@ export const Dashboard: React.FC = () => {
                     </button>
                 </div>
             </section>
+
+            {/* Market News Section */}
+            <NewsSection />
+
 
             {/* Middle Section: Chart & Learning */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

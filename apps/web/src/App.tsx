@@ -4,14 +4,14 @@ import { Header } from './components/Header';
 import { Dashboard } from './pages/Dashboard';
 import { Education } from './pages/Education';
 import { CourseDetail } from './pages/CourseDetail';
-import { Game } from './pages/Game';
-import { TetrisPage } from './pages/TetrisPage';
+
 import { Market } from './pages/Market';
 import { StockDetail } from './pages/StockDetail';
-import { Mentoring } from './pages/Mentoring';
 import { AIAssistant } from './pages/AIAssistant';
 import { Community } from './pages/Community';
+import { Mentoring } from './pages/Mentoring';
 import { Landing } from './pages/Landing';
+import { Game } from './pages/Game';
 import { AuthModal } from './components/AuthModal';
 import { authClient } from './lib/auth-client';
 import { PortfolioProvider } from './context/PortfolioContext';
@@ -24,13 +24,13 @@ const AppRoutes = () => (
     <Route path="/profile-setup" element={<ProfileSetup />} /> {/* Added ProfileSetup route */}
     <Route path="/education" element={<Education />} />
     <Route path="/education/:id" element={<CourseDetail />} />
-    <Route path="/game" element={<Game />} />
-    <Route path="/game/tetris" element={<TetrisPage />} />
+
     <Route path="/market" element={<Market />} />
     <Route path="/market/:ticker" element={<StockDetail />} />
-    <Route path="/mentoring" element={<Mentoring />} />
     <Route path="/ai-assistant" element={<AIAssistant />} />
+    <Route path="/mentoring" element={<Mentoring />} />
     <Route path="/community" element={<Community />} />
+    <Route path="/game" element={<Game />} />
     {/* Redirect any unhandled routes to dashboard if authenticated */}
     <Route path="*" element={<Navigate to="/" replace />} />
   </Routes>
@@ -61,7 +61,7 @@ function App() {
             setIsAuthModalOpen(false);
             navigate('/profile-setup'); // Redirect to profile setup after successful sign-up
           },
-          onError: (ctx) => {
+          onError: (ctx: any) => {
             alert(ctx.error?.message || "Something went wrong during sign up");
           }
         });
@@ -75,7 +75,7 @@ function App() {
             // Session hook will update automatically
             setIsAuthModalOpen(false);
           },
-          onError: (ctx) => {
+          onError: (ctx: any) => {
             alert(ctx.error?.message || "Something went wrong during sign in");
           }
         });
@@ -107,7 +107,7 @@ function App() {
     );
   }
 
-  const shouldHideGlobalHeader = ['/market', '/mentoring', '/ai-assistant', '/community'].some(path => location.pathname.startsWith(path));
+  const shouldHideGlobalHeader = ['/market', '/ai-assistant', '/community', '/mentoring', '/game'].some(path => location.pathname.startsWith(path));
 
   return (
     <PortfolioProvider userId={session?.user?.id}>
@@ -115,7 +115,7 @@ function App() {
         <Sidebar />
         <div className="flex flex-1 flex-col overflow-hidden relative">
           {!shouldHideGlobalHeader && <Header />}
-          <main className={shouldHideGlobalHeader ? "flex-1 overflow-hidden relative" : "flex-1 overflow-y-auto p-4 md:p-8 scrollbar-thin scrollbar-thumb-card-border scrollbar-track-transparent"}>
+          <main className={shouldHideGlobalHeader ? "flex-1 overflow-hidden relative" : "flex-1 overflow-y-auto p-4 md:p-8"}>
             <div className={shouldHideGlobalHeader ? "h-full" : "mx-auto max-w-6xl flex flex-col gap-8"}>
               <AppRoutes />
             </div>

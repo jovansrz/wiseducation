@@ -2,7 +2,7 @@
   "name": "wise-trading-monorepo",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"npm run dev -w web\" \"npm run dev -w wiseducation-api\""
+    "dev": "concurrently \"npm run dev -w web\" \"npm run dev -w wiseducation-api\" \"npm run db:studio -w wiseducation-api\""
   },
   "workspaces": [
     "apps/*",

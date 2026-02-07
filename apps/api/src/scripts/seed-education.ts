@@ -1,78 +1,53 @@
 import "dotenv/config";
-import { db } from "../db";
-import { course, lesson, quiz, question } from "../db/schema";
+import { db } from "../db/index.js";
+import { course, lesson } from "../db/schema/course.js";
+import { quiz, question } from "../db/schema/quiz.js";
 import { v4 as uuidv4 } from "uuid";
+import { sql } from "drizzle-orm";
 
 async function seed() {
-    console.log("🌱 Seeding education data...");
+    console.log("🌱 Seeding new education modules...");
 
-    // 1. Course: Introduction to Investing
+    // First, delete existing data
+    console.log("🗑️ Deleting existing courses, lessons, quizzes, and questions...");
+    await db.execute(sql`DELETE FROM question`);
+    await db.execute(sql`DELETE FROM quiz`);
+    await db.execute(sql`DELETE FROM lesson`);
+    await db.execute(sql`DELETE FROM course`);
+    console.log("✅ Existing data deleted");
+
+    // ============================================================
+    // MODULE 1: What is Investment? (Beginner)
+    // ============================================================
     const courseId1 = uuidv4();
     await db.insert(course).values({
         id: courseId1,
-        title: "Introduction to Investing",
-        description: "Learn the fundamentals of investing, why it's important, and how to get started safely.",
+        title: "What is Investment?",
+        description: "Learn what investing means, why it matters for your future, and how to start your investment journey.",
         difficulty: "Beginner",
         coverImageUrl: "https://images.unsplash.com/photo-1579532507281-28680d3e6221?q=80&w=2670&auto=format&fit=crop",
-        type: "text",
+        type: "video",
         order: 1,
-        totalDurationMinutes: 45,
+        totalDurationMinutes: 15,
     });
 
-    // Lessons for Course 1
     const lessonId1_1 = uuidv4();
     await db.insert(lesson).values({
         id: lessonId1_1,
         courseId: courseId1,
-        title: "Why Invest?",
-        content: `
-# Why Investing Matters
-
-Investing is one of the most effective ways to build wealth over time. Unlike saving, where your money sits idle, investing puts your money to work.
-
-## Inflation
-Over time, the value of money decreases due to inflation. If you keep your money under a mattress, it loses purchasing power. Investing helps you beat inflation.
-
-## Compounding
-Compound interest is the "eighth wonder of the world". It's when you earn interest on your interest. The earlier you start, the more powerful this effect becomes.
-
-## Financial Goals
-Whether it's buying a house, retiring comfortably, or traveling, investing helps you reach your financial goals faster.
-        `,
-        type: "text",
+        title: "Introduction to Investing",
+        content: "Watch this video to understand the basics of investing and why it's important for your financial future.",
+        videoUrl: "https://www.youtube.com/watch?v=gFQNPmLKj1k",
+        type: "video",
         order: 1,
-        durationMinutes: 10,
-    });
-
-    const lessonId1_2 = uuidv4();
-    await db.insert(lesson).values({
-        id: lessonId1_2,
-        courseId: courseId1,
-        title: "Risk vs. Reward",
-        content: `
-# Understanding Risk and Reward
-
-In investing, risk and reward go hand in hand. Generally, higher potential returns come with higher risk.
-
-## Types of Assets
-* **Stocks**: High potential return, high risk. Ownership in a company.
-* **Bonds**: Lower risk, lower return. Loans to companies or governments.
-* **Cash**: Lowest risk, lowest return.
-
-## Diversification
-"Don't put all your eggs in one basket." Spreading your investments across different assets reduces risk.
-        `,
-        type: "text",
-        order: 2,
         durationMinutes: 15,
     });
 
-    // Quiz for Course 1
     const quizId1 = uuidv4();
     await db.insert(quiz).values({
         id: quizId1,
         courseId: courseId1,
-        title: "Investing Basics Quiz",
+        title: "Investment Basics Quiz",
         passingScore: 70,
     });
 
@@ -80,97 +55,210 @@ In investing, risk and reward go hand in hand. Generally, higher potential retur
         {
             id: uuidv4(),
             quizId: quizId1,
-            text: "What is the main reason to invest instead of just saving?",
+            text: "What is the main purpose of investing?",
             type: "single",
-            options: [
-                { id: "a", text: "To lose money safely" },
-                { id: "b", text: "To beat inflation and build wealth" },
-                { id: "c", text: "To avoid bank fees" }
-            ],
-            correctAnswer: ["b"],
-            order: 1
+            options: {
+                a: "To spend money quickly",
+                b: "To grow wealth over time",
+                c: "To pay taxes",
+            },
+            correctAnswer: "b",
+            explanation: "Investing helps grow your wealth over time through returns and compound interest.",
+            order: 1,
         },
         {
             id: uuidv4(),
             quizId: quizId1,
-            text: "Which asset class typically has the highest risk?",
+            text: "What is compound interest?",
             type: "single",
-            options: [
-                { id: "a", text: "Government Bonds" },
-                { id: "b", text: "Cash" },
-                { id: "c", text: "Stocks" }
-            ],
-            correctAnswer: ["c"],
-            order: 2
-        }
+            options: {
+                a: "Interest charged on loans only",
+                b: "Interest earned on both principal and accumulated interest",
+                c: "A type of bank fee",
+            },
+            correctAnswer: "b",
+            explanation: "Compound interest means you earn interest on your interest, accelerating wealth growth.",
+            order: 2,
+        },
+        {
+            id: uuidv4(),
+            quizId: quizId1,
+            text: "Why is starting to invest early beneficial?",
+            type: "single",
+            options: {
+                a: "You get more bank bonuses",
+                b: "Compound interest has more time to work",
+                c: "Stocks are cheaper when you're young",
+            },
+            correctAnswer: "b",
+            explanation: "The earlier you start, the more time compound interest has to grow your money.",
+            order: 3,
+        },
     ]);
 
-
-    // 2. Course: Stock Market 101
+    // ============================================================
+    // MODULE 2: Understanding Stocks (Beginner)
+    // ============================================================
     const courseId2 = uuidv4();
     await db.insert(course).values({
         id: courseId2,
-        title: "Stock Market 101",
-        description: "What is a stock? How does the market work? Master the basics of equity trading.",
+        title: "Understanding Stocks",
+        description: "Discover what stocks are, how they work, and why companies issue them to the public.",
         difficulty: "Beginner",
         coverImageUrl: "https://images.unsplash.com/photo-1611974765270-ca1258634369?q=80&w=2664&auto=format&fit=crop",
         type: "video",
         order: 2,
-        totalDurationMinutes: 60,
+        totalDurationMinutes: 12,
     });
 
-    // Lessons for Course 2
     const lessonId2_1 = uuidv4();
     await db.insert(lesson).values({
         id: lessonId2_1,
         courseId: courseId2,
         title: "What is a Stock?",
-        content: "Watch this video to understand what it means to own a share of a company.",
-        videoUrl: "https://www.youtube.com/watch?v=p7HKvqRI_Bo", // Example content
+        content: "Learn what it means to own a share of a company and how stocks generate returns.",
+        videoUrl: "https://www.youtube.com/watch?v=p7HKvqRI_Bo",
         type: "video",
         order: 1,
         durationMinutes: 12,
     });
 
-    // Quiz for Course 2
     const quizId2 = uuidv4();
     await db.insert(quiz).values({
         id: quizId2,
         courseId: courseId2,
-        title: "Stock Market Basics Quiz",
-        passingScore: 80,
+        title: "Stock Fundamentals Quiz",
+        passingScore: 70,
     });
 
     await db.insert(question).values([
         {
             id: uuidv4(),
             quizId: quizId2,
-            text: "When you buy a stock, what are you buying?",
+            text: "When you buy a stock, what do you own?",
             type: "single",
-            options: [
-                { id: "a", text: "A loan to the company" },
-                { id: "b", text: "A piece of ownership in the company" },
-                { id: "c", text: "A product from the company" }
-            ],
-            correctAnswer: ["b"],
-            order: 1
+            options: {
+                a: "A loan to the company",
+                b: "A small piece of ownership in the company",
+                c: "The company's products",
+            },
+            correctAnswer: "b",
+            explanation: "A stock represents partial ownership in a company.",
+            order: 1,
         },
         {
             id: uuidv4(),
             quizId: quizId2,
-            text: "What determines the price of a stock in the short term?",
+            text: "How can stockholders make money?",
             type: "single",
-            options: [
-                { id: "a", text: "The CEO's mood" },
-                { id: "b", text: "Supply and demand" },
-                { id: "c", text: "Fixed government rates" }
-            ],
-            correctAnswer: ["b"],
-            order: 2
-        }
+            options: {
+                a: "Through dividends and stock price appreciation",
+                b: "Through interest payments only",
+                c: "By working at the company",
+            },
+            correctAnswer: "a",
+            explanation: "Stockholders can earn through dividends (profit sharing) and by selling stock at a higher price.",
+            order: 2,
+        },
+        {
+            id: uuidv4(),
+            quizId: quizId2,
+            text: "Why do companies issue stocks?",
+            type: "single",
+            options: {
+                a: "To pay employees",
+                b: "To raise capital for growth and operations",
+                c: "To reduce their taxes",
+            },
+            correctAnswer: "b",
+            explanation: "Companies issue stocks to raise funds for expansion, research, and business operations.",
+            order: 3,
+        },
     ]);
 
-    console.log("✅ Seeding complete!");
+    // ============================================================
+    // MODULE 3: Risk & Reward (Intermediate)
+    // ============================================================
+    const courseId3 = uuidv4();
+    await db.insert(course).values({
+        id: courseId3,
+        title: "Risk and Reward",
+        description: "Understand the relationship between risk and potential returns in investing.",
+        difficulty: "Intermediate",
+        coverImageUrl: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=2426&auto=format&fit=crop",
+        type: "video",
+        order: 3,
+        totalDurationMinutes: 10,
+    });
+
+    const lessonId3_1 = uuidv4();
+    await db.insert(lesson).values({
+        id: lessonId3_1,
+        courseId: courseId3,
+        title: "Understanding Investment Risk",
+        content: "Learn about different types of investment risks and how to manage them effectively.",
+        videoUrl: "https://www.youtube.com/watch?v=zN1dP0s_8cA",
+        type: "video",
+        order: 1,
+        durationMinutes: 10,
+    });
+
+    const quizId3 = uuidv4();
+    await db.insert(quiz).values({
+        id: quizId3,
+        courseId: courseId3,
+        title: "Risk Management Quiz",
+        passingScore: 70,
+    });
+
+    await db.insert(question).values([
+        {
+            id: uuidv4(),
+            quizId: quizId3,
+            text: "Generally, higher potential returns come with:",
+            type: "single",
+            options: {
+                a: "Lower risk",
+                b: "Higher risk",
+                c: "No change in risk",
+            },
+            correctAnswer: "b",
+            explanation: "In investing, higher potential returns typically require taking on more risk.",
+            order: 1,
+        },
+        {
+            id: uuidv4(),
+            quizId: quizId3,
+            text: "What is diversification?",
+            type: "single",
+            options: {
+                a: "Putting all money in one stock",
+                b: "Spreading investments across different assets",
+                c: "Only investing in bonds",
+            },
+            correctAnswer: "b",
+            explanation: "Diversification means spreading your investments to reduce risk - 'don't put all eggs in one basket'.",
+            order: 2,
+        },
+        {
+            id: uuidv4(),
+            quizId: quizId3,
+            text: "Which asset type is generally considered lowest risk?",
+            type: "single",
+            options: {
+                a: "Cryptocurrency",
+                b: "Stocks",
+                c: "Government bonds",
+            },
+            correctAnswer: "c",
+            explanation: "Government bonds are considered low-risk as they're backed by the government.",
+            order: 3,
+        },
+    ]);
+
+    console.log("✅ Seeding complete! Created 3 learning modules.");
+    console.log("   - 2 Beginner modules");
+    console.log("   - 1 Intermediate module");
     process.exit(0);
 }
 

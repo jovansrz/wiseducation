@@ -19,7 +19,7 @@ export const Header: React.FC = () => {
             <div className="hidden md:flex items-center gap-3 rounded-lg bg-card-dark border border-card-border px-4 py-1.5">
                 <span className="material-symbols-outlined text-primary">account_balance_wallet</span>
                 <div className="flex flex-col">
-                    <span className="text-[10px] uppercase font-bold text-text-secondary tracking-wider">Virtual Balance</span>
+                    <span className="text-[10px] uppercase font-bold text-text-secondary tracking-wider">WISE CASH</span>
                     <span className="text-sm font-bold text-white tracking-wide">Rp {formatCurrency(virtualCash)}</span>
                 </div>
             </div>

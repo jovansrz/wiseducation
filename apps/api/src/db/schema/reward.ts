@@ -1,5 +1,5 @@
 import { pgTable, text, integer, timestamp, doublePrecision } from "drizzle-orm/pg-core";
-import { user } from "./auth.js";
+import { user } from "./auth";
 
 // Reward table - tracks virtual cash rewards for education achievements
 export const reward = pgTable("reward", {
@@ -28,6 +28,7 @@ export const learningStreak = pgTable("learning_streak", {
 
 // Reward amounts configuration (in IDR)
 export const REWARD_AMOUNTS = {
+    MODULE_COMPLETION: 500_000, // Reward for passing a module quiz
     BEGINNER_COMPLETION: 2_500_000,
     INTERMEDIATE_COMPLETION: 5_000_000,
     ADVANCED_COMPLETION: 10_000_000,

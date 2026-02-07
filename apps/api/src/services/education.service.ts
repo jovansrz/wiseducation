@@ -314,12 +314,13 @@ export const educationService = {
         // Calculate score
         let correctCount = 0;
         const results = questions.map((q) => {
-            const userAnswer = answers[q.id];
-            const isCorrect = userAnswer?.toLowerCase() === q.correctAnswer.toLowerCase();
+            const userAnswer = answers[q.id]?.toString().trim().toLowerCase();
+            const correctAnswer = q.correctAnswer?.toString().trim().toLowerCase();
+            const isCorrect = userAnswer === correctAnswer;
             if (isCorrect) correctCount++;
             return {
                 questionId: q.id,
-                userAnswer,
+                userAnswer: answers[q.id],
                 correctAnswer: q.correctAnswer,
                 isCorrect,
                 explanation: q.explanation,
@@ -343,13 +344,27 @@ export const educationService = {
             })
             .returning();
 
-        // Award rewards
-        if (isPerfect) {
-            await this.awardReward(userId, "quiz_perfect", REWARD_AMOUNTS.QUIZ_PERFECT, `Perfect score on quiz: ${quizData.title}`);
-        }
-
-        // Check for level completion
+        // Award rewards for passing
         if (passed) {
+            // Award module completion reward (500k for any passing score)
+            await this.awardReward(
+                userId,
+                "module_completion",
+                REWARD_AMOUNTS.MODULE_COMPLETION,
+                `Completed module: ${quizData.title}`
+            );
+
+            // Additional bonus for perfect score
+            if (isPerfect) {
+                await this.awardReward(
+                    userId,
+                    "quiz_perfect",
+                    REWARD_AMOUNTS.QUIZ_PERFECT,
+                    `Perfect score on quiz: ${quizData.title}`
+                );
+            }
+
+            // Check for level completion
             await this.checkLevelCompletion(userId, quizData.courseId);
         }
 

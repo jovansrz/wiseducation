@@ -1,13 +1,17 @@
 // Auth tables (Better Auth)
-export * from "./auth.js";
+export * from "./auth";
 
 // Application tables
-export * from "./portfolio.js";
-export * from "./stock.js";
-export * from "./course.js";
-export * from "./quiz.js";
-export * from "./reward.js";
-export * from "./post.js";
-export * from "./activity.js";
-export * from "./game.js";
+export * from "./portfolio";
+export * from "./stock";
+export * from "./course";
+export * from "./quiz";
+export * from "./reward";
+export * from "./post";
+export * from "./activity";
+
+export * from "./aiChat";
+export * from "./mentor";
+export * from "./game";
+
 

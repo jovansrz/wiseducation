@@ -11,7 +11,7 @@ const port = process.env.PORT || 3005;
 // CORS Configuration
 app.use(
     cors({
-        origin: [process.env.FRONTEND_URL || "http://localhost:5173", "http://localhost:3005"],
+        origin: [process.env.FRONTEND_URL || "http://localhost:5173", "http://localhost:3005", "http://localhost:5174"],
         credentials: true,
         methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allowedHeaders: ["Content-Type", "Authorization"],
@@ -32,7 +32,11 @@ app.get("/health", (req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
-    console.log(`Better Auth URL: ${process.env.BETTER_AUTH_URL}/api/auth`);
-});
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+    app.listen(port, () => {
+        console.log(`Server is running on port ${port}`);
+        console.log(`Better Auth URL: ${process.env.BETTER_AUTH_URL}/api/auth`);
+    });
+}
+
+export default app;

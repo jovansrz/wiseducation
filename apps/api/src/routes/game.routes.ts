@@ -1,123 +1,84 @@
-import { Router, Request, Response } from "express";
+import { Router } from "express";
 import { gameService } from "../services/game.service.js";
 
 const router = Router();
 
-// Submit game score
-router.post("/score", async (req: Request, res: Response) => {
+// Submit game score and earn WISE Cash
+router.post("/submit-score", async (req, res) => {
     try {
-        const userId = req.headers["x-user-id"] as string;
-        if (!userId) {
-            return res.status(401).json({ error: "User ID required" });
+        const { userId, gameType, score, linesCleared, coinsCollected, specialCoins, distance } = req.body;
+
+        if (!userId || !gameType || score === undefined) {
+            return res.status(400).json({ error: "userId, gameType, and score are required" });
         }
 
-        const { score, linesCleared, cashEarned, comboCount, maxCombo, duration, gameType } = req.body;
-
-        if (score === undefined || linesCleared === undefined) {
-            return res.status(400).json({ error: "Score and linesCleared are required" });
+        if (!['tetris', 'wise_jump'].includes(gameType)) {
+            return res.status(400).json({ error: "Invalid game type. Must be 'tetris' or 'wise_jump'" });
         }
 
-        const result = await gameService.submitGameScore(userId, {
+        const result = await gameService.submitScore(userId, {
+            gameType,
             score,
             linesCleared,
-            cashEarned: cashEarned || 0,
-            comboCount: comboCount || 0,
-            maxCombo: maxCombo || 0,
-            duration: duration || 0,
-            gameType: gameType || "tetris",
+            coinsCollected,
+            specialCoins,
+            distance,
         });
 
-        return res.json(result);
-    } catch (error) {
+        res.json(result);
+    } catch (error: any) {
         console.error("Error submitting game score:", error);
-        return res.status(500).json({ error: "Failed to submit game score" });
+        res.status(500).json({ error: error.message });
     }
 });
 
-// Get leaderboard
-router.get("/leaderboard/:gameType?", async (req: Request, res: Response) => {
+// Get leaderboard for a game type
+router.get("/leaderboard/:gameType", async (req, res) => {
     try {
-        const gameType = req.params.gameType || "tetris";
-        const limitStr = typeof req.query.limit === 'string' ? req.query.limit : '10';
-        const limit = parseInt(limitStr) || 10;
+        const { gameType } = req.params;
+        const limit = parseInt(req.query.limit as string) || 10;
 
-        const leaderboard = await gameService.getLeaderboard(gameType, limit);
-        return res.json(leaderboard);
-    } catch (error) {
+        if (!['tetris', 'wise_jump'].includes(gameType)) {
+            return res.status(400).json({ error: "Invalid game type" });
+        }
+
+        const leaderboard = await gameService.getLeaderboard(gameType as 'tetris' | 'wise_jump', limit);
+
+        // Add rank numbers
+        const rankedLeaderboard = leaderboard.map((entry, index) => ({
+            ...entry,
+            rank: index + 1,
+        }));
+
+        res.json(rankedLeaderboard);
+    } catch (error: any) {
         console.error("Error fetching leaderboard:", error);
-        return res.status(500).json({ error: "Failed to fetch leaderboard" });
+        res.status(500).json({ error: error.message });
     }
 });
 
-// Get user game stats
-router.get("/stats", async (req: Request, res: Response) => {
+// Get user's game stats
+router.get("/stats/:userId", async (req, res) => {
     try {
-        const userId = req.headers["x-user-id"] as string;
-        if (!userId) {
-            return res.status(401).json({ error: "User ID required" });
-        }
-
-        const stats = await gameService.getUserGameStats(userId);
-        return res.json(stats);
-    } catch (error) {
-        console.error("Error fetching user game stats:", error);
-        return res.status(500).json({ error: "Failed to fetch user game stats" });
-    }
-});
-
-// Get user's best scores
-router.get("/best/:gameType?", async (req: Request, res: Response) => {
-    try {
-        const userId = req.headers["x-user-id"] as string;
-        if (!userId) {
-            return res.status(401).json({ error: "User ID required" });
-        }
-
-        const gameType = req.params.gameType || "tetris";
-        const limitStr = typeof req.query.limit === 'string' ? req.query.limit : '5';
-        const limit = parseInt(limitStr) || 5;
-
-        const scores = await gameService.getUserBestScores(userId, gameType, limit);
-        return res.json(scores);
-    } catch (error) {
-        console.error("Error fetching best scores:", error);
-        return res.status(500).json({ error: "Failed to fetch best scores" });
+        const { userId } = req.params;
+        const stats = await gameService.getUserStats(userId);
+        res.json(stats);
+    } catch (error: any) {
+        console.error("Error fetching user stats:", error);
+        res.status(500).json({ error: error.message });
     }
 });
 
 // Get user's recent games
-router.get("/recent", async (req: Request, res: Response) => {
+router.get("/history/:userId", async (req, res) => {
     try {
-        const userId = req.headers["x-user-id"] as string;
-        if (!userId) {
-            return res.status(401).json({ error: "User ID required" });
-        }
-
-        const limitStr = typeof req.query.limit === 'string' ? req.query.limit : '10';
-        const limit = parseInt(limitStr) || 10;
-        const games = await gameService.getUserRecentGames(userId, limit);
-        return res.json(games);
-    } catch (error) {
-        console.error("Error fetching recent games:", error);
-        return res.status(500).json({ error: "Failed to fetch recent games" });
-    }
-});
-
-// Get transaction history
-router.get("/transactions", async (req: Request, res: Response) => {
-    try {
-        const userId = req.headers["x-user-id"] as string;
-        if (!userId) {
-            return res.status(401).json({ error: "User ID required" });
-        }
-
-        const limitStr = typeof req.query.limit === 'string' ? req.query.limit : '20';
-        const limit = parseInt(limitStr) || 20;
-        const transactions = await gameService.getTransactionHistory(userId, limit);
-        return res.json(transactions);
-    } catch (error) {
-        console.error("Error fetching transactions:", error);
-        return res.status(500).json({ error: "Failed to fetch transactions" });
+        const { userId } = req.params;
+        const limit = parseInt(req.query.limit as string) || 10;
+        const games = await gameService.getRecentGames(userId, limit);
+        res.json(games);
+    } catch (error: any) {
+        console.error("Error fetching game history:", error);
+        res.status(500).json({ error: error.message });
     }
 });
 

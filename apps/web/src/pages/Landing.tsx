@@ -80,8 +80,8 @@ export const Landing: React.FC<LandingProps> = ({ onOpenAuth }) => {
                                 <span
                                     key={index}
                                     className={`absolute inset-0 flex items-center justify-center text-sm font-bold tracking-wide text-[#30b8aa] transition-all duration-500 transform ${index === mottoIndex
-                                            ? 'opacity-100 translate-y-0'
-                                            : 'opacity-0 translate-y-8'
+                                        ? 'opacity-100 translate-y-0'
+                                        : 'opacity-0 translate-y-8'
                                         }`}
                                 >
                                     {motto}
@@ -314,7 +314,7 @@ export const Landing: React.FC<LandingProps> = ({ onOpenAuth }) => {
                                     <span className="material-symbols-outlined text-[#30b8aa] text-3xl">stadia_controller</span>
                                 </div>
                                 <h4 className="text-xl font-bold text-white mb-3">Risk-Free Simulator</h4>
-                                <p className="text-gray-400 leading-relaxed">Practice your moves with $10k virtual cash in a live market environment.</p>
+                                <p className="text-gray-400 leading-relaxed">Practice your moves with $10k WISE CASH in a live market environment.</p>
                             </div>
 
                             {/* Feature 3 */}

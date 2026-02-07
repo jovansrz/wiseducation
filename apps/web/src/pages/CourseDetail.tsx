@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { QuizComponent } from '../components/QuizComponent';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
 const API_BASE = 'http://localhost:3005/api'; // Should match your request
+const MIN_VIDEO_PERCENT = 75; // Must watch at least 75% to unlock quiz
 
 export const CourseDetail: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -12,10 +13,53 @@ export const CourseDetail: React.FC = () => {
     const [activeLesson, setActiveLesson] = useState<any>(null);
     const [quiz, setQuiz] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [videoProgress, setVideoProgress] = useState(0);
+
+    const [showRewardNotification, setShowRewardNotification] = useState(false);
+    const [rewardAmount, setRewardAmount] = useState(0);
+
+    // Fetch lesson progress from API
+    const fetchLessonProgress = useCallback(async (lessonId: string) => {
+        try {
+            const res = await fetch(`${API_BASE}/education/courses/${id}/lessons/with-progress`, {
+                credentials: 'include'
+            });
+            if (res.ok) {
+                const lessonsWithProgress = await res.json();
+                const lessonProgress = lessonsWithProgress.find((l: any) => l.id === lessonId);
+                if (lessonProgress && lessonProgress.videoWatchedPercent) {
+                    setVideoProgress(lessonProgress.videoWatchedPercent);
+                }
+            }
+        } catch (error) {
+            console.error("Failed to fetch lesson progress:", error);
+        }
+    }, [id]);
+
+    // Save video progress to database
+    const saveVideoProgress = async (lessonId: string, percent: number) => {
+        try {
+            await fetch(`${API_BASE}/education/lessons/${lessonId}/watch-progress`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ watchedPercent: percent })
+            });
+        } catch (error) {
+            console.error("Failed to save video progress:", error);
+        }
+    };
 
     useEffect(() => {
         fetchCourseData();
     }, [id]);
+
+    // Fetch progress when active lesson changes
+    useEffect(() => {
+        if (activeLesson?.id) {
+            fetchLessonProgress(activeLesson.id);
+        }
+    }, [activeLesson?.id, fetchLessonProgress]);
 
     const fetchCourseData = async () => {
         try {
@@ -151,16 +195,87 @@ export const CourseDetail: React.FC = () => {
                         </button>
                     </div>
 
-                    {/* Simulated Quiz Trigger */}
-                    {quiz && (
+                    {/* Video Progress Section */}
+                    {activeLesson?.type === 'video' && (
                         <div className="mt-6 pt-6 border-t border-card-border">
-                            <h3 className="text-lg font-bold text-white mb-4">Module Quiz</h3>
+                            <div className="flex justify-between items-center mb-2">
+                                <h3 className="text-sm font-bold text-white">Video Progress</h3>
+                                <span className={`text-sm font-bold ${videoProgress >= MIN_VIDEO_PERCENT ? 'text-green-500' : 'text-text-secondary'}`}>
+                                    {videoProgress}%
+                                </span>
+                            </div>
+                            <div className="h-2 w-full bg-card-border rounded-full overflow-hidden mb-4">
+                                <div
+                                    className={`h-full rounded-full transition-all duration-500 ${videoProgress >= MIN_VIDEO_PERCENT ? 'bg-green-500' : 'bg-primary'}`}
+                                    style={{ width: `${videoProgress}%` }}
+                                ></div>
+                            </div>
+
+                            {videoProgress < MIN_VIDEO_PERCENT && (
+                                <div className="flex items-center gap-3">
+                                    <p className="text-sm text-text-secondary flex-1">
+                                        Watch at least <span className="font-bold text-primary">{MIN_VIDEO_PERCENT}%</span> of the video to unlock the quiz
+                                    </p>
+                                    <button
+                                        onClick={async () => {
+                                            // Simulate watching video and save to database
+                                            const newProgress = Math.min(100, videoProgress + 25);
+                                            setVideoProgress(newProgress);
+                                            await saveVideoProgress(activeLesson.id, newProgress);
+                                        }}
+                                        className="shrink-0 flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg font-bold text-sm hover:bg-primary/90 transition-colors"
+                                    >
+                                        <span className="material-symbols-outlined text-[18px]">play_arrow</span>
+                                        I've Watched +25%
+                                    </button>
+                                </div>
+                            )}
+
+                            {videoProgress >= MIN_VIDEO_PERCENT && (
+                                <div className="flex items-center gap-2 text-green-500 text-sm font-medium">
+                                    <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                                    Video requirement met! Quiz is now unlocked.
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Quiz Section - Only shown when video progress >= 75% or lesson is text type */}
+                    {quiz && (activeLesson?.type !== 'video' || videoProgress >= MIN_VIDEO_PERCENT) && (
+                        <div className="mt-6 pt-6 border-t border-card-border">
+                            <div className="flex items-center gap-3 mb-4">
+                                <h3 className="text-lg font-bold text-white">Module Quiz</h3>
+                                <div className="flex items-center gap-1 bg-yellow-500/10 text-yellow-500 px-2 py-1 rounded text-xs font-bold">
+                                    <span className="material-symbols-outlined text-[14px]">monetization_on</span>
+                                    +Rp 500.000 Reward
+                                </div>
+                            </div>
                             <QuizComponent
                                 quizId={quiz.id}
                                 title={quiz.title}
                                 questions={quiz.questions}
-                                onComplete={() => fetchCourseData()}
+                                onComplete={(_score: number, passed: boolean) => {
+                                    if (passed) {
+                                        setRewardAmount(500000);
+                                        setShowRewardNotification(true);
+                                        setTimeout(() => setShowRewardNotification(false), 5000);
+                                    }
+                                    fetchCourseData();
+                                }}
                             />
+                        </div>
+                    )}
+
+                    {/* Reward Notification */}
+                    {showRewardNotification && (
+                        <div className="fixed bottom-8 right-8 bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-6 py-4 rounded-xl shadow-2xl animate-bounce z-50">
+                            <div className="flex items-center gap-3">
+                                <span className="material-symbols-outlined text-3xl">emoji_events</span>
+                                <div>
+                                    <p className="font-bold text-lg">Congratulations! 🎉</p>
+                                    <p className="text-sm opacity-90">You earned +Rp {rewardAmount.toLocaleString('id-ID')} WISE CASH!</p>
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>

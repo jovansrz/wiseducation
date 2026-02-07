@@ -59,23 +59,23 @@ export const Sidebar: React.FC = () => {
                         </NavLink>
                         <NavLink to="/education" className={({ isActive }) => `group flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all ${isActive ? 'bg-primary/10 text-primary hover:bg-primary/20' : 'text-text-secondary hover:bg-card-border hover:text-white'}`}>
                             <span className="material-symbols-outlined">school</span>
-                            <span className="text-sm font-medium">Edukasi</span>
-                        </NavLink>
-                        <NavLink to="/market" className={({ isActive }) => `group flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all ${isActive ? 'bg-primary/10 text-primary hover:bg-primary/20' : 'text-text-secondary hover:bg-card-border hover:text-white'}`}>
-                            <span className="material-symbols-outlined">candlestick_chart</span>
-                            <span className="text-sm font-medium">Simulasi</span>
+                            <span className="text-sm font-medium">Education</span>
                         </NavLink>
                         <NavLink to="/game" className={({ isActive }) => `group flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all ${isActive ? 'bg-primary/10 text-primary hover:bg-primary/20' : 'text-text-secondary hover:bg-card-border hover:text-white'}`}>
                             <span className="material-symbols-outlined">sports_esports</span>
-                            <span className="text-sm font-medium">Game</span>
+                            <span className="text-sm font-medium">Game Zone</span>
                         </NavLink>
-                        <NavLink to="/mentoring" className={({ isActive }) => `group flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all ${isActive ? 'bg-primary/10 text-primary hover:bg-primary/20' : 'text-text-secondary hover:bg-card-border hover:text-white'}`}>
-                            <span className="material-symbols-outlined">verified_user</span>
-                            <span className="text-sm font-medium">Mentor</span>
+                        <NavLink to="/market" className={({ isActive }) => `group flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all ${isActive ? 'bg-primary/10 text-primary hover:bg-primary/20' : 'text-text-secondary hover:bg-card-border hover:text-white'}`}>
+                            <span className="material-symbols-outlined">candlestick_chart</span>
+                            <span className="text-sm font-medium">Simulation</span>
                         </NavLink>
                         <NavLink to="/ai-assistant" className={({ isActive }) => `group flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all ${isActive ? 'bg-primary/10 text-primary hover:bg-primary/20' : 'text-text-secondary hover:bg-card-border hover:text-white'}`}>
                             <span className="material-symbols-outlined">smart_toy</span>
                             <span className="text-sm font-medium">AI Bot</span>
+                        </NavLink>
+                        <NavLink to="/mentoring" className={({ isActive }) => `group flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all ${isActive ? 'bg-primary/10 text-primary hover:bg-primary/20' : 'text-text-secondary hover:bg-card-border hover:text-white'}`}>
+                            <span className="material-symbols-outlined">school</span>
+                            <span className="text-sm font-medium">Mentoring</span>
                         </NavLink>
                         <NavLink to="/community" className={({ isActive }) => `group flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all ${isActive ? 'bg-primary/10 text-primary hover:bg-primary/20' : 'text-text-secondary hover:bg-card-border hover:text-white'}`}>
                             <span className="material-symbols-outlined">diversity_3</span>
@@ -162,8 +162,8 @@ export const Sidebar: React.FC = () => {
                                         key={avatar.id}
                                         onClick={() => handleAvatarSelect(avatar.url)}
                                         className={`h-14 w-14 rounded-full overflow-hidden border-2 transition-all hover:scale-110 ${selectedAvatar === avatar.url
-                                                ? 'border-primary ring-2 ring-primary/30'
-                                                : 'border-card-border hover:border-primary/50'
+                                            ? 'border-primary ring-2 ring-primary/30'
+                                            : 'border-card-border hover:border-primary/50'
                                             }`}
                                     >
                                         <img src={avatar.url} alt={avatar.id} className="h-full w-full object-cover" />

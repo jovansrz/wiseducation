@@ -1,5 +1,5 @@
 import { pgTable, text, real, timestamp, integer } from "drizzle-orm/pg-core";
-import { user } from "./auth.js";
+import { user } from "./auth";
 
 export const portfolio = pgTable("portfolio", {
     id: text("id").primaryKey(),

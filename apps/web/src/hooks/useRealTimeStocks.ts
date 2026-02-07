@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { stocks as initialStocks, type Stock } from '../data/stocks';
-import { getStockQuote, type AlphaVantageQuote } from '../services/alphaVantage';
+import { getStockQuote, type AlphaVantageQuote } from '../services/stockService';
 
 export interface RealTimeStock extends Stock {
     isLive: boolean;
@@ -16,9 +16,7 @@ interface UseRealTimeStocksReturn {
     refreshAll: () => Promise<void>;
 }
 
-// Alpha Vantage free tier: 5 API calls/minute, 500/day
-// We'll fetch one stock at a time with intervals to avoid rate limiting
-const API_CALL_INTERVAL = 15000; // 15 seconds between API calls
+// Backend uses Yahoo Finance, so we can fetch more frequently
 const PRICE_SIMULATION_INTERVAL = 3000; // 3 seconds for simulated fluctuations between real updates
 
 /**
@@ -86,7 +84,8 @@ export function useRealTimeStocks(): UseRealTimeStocksReturn {
             if (!isMounted.current) break;
             await refreshStock(stock.ticker);
             // Wait between calls to respect rate limit
-            await new Promise(resolve => setTimeout(resolve, API_CALL_INTERVAL));
+            // Small delay to prevent flooding if we have many stocks
+            await new Promise(resolve => setTimeout(resolve, 500));
         }
         setIsLoading(false);
     }, [refreshStock]);
@@ -103,12 +102,14 @@ export function useRealTimeStocks(): UseRealTimeStocksReturn {
 
         // Set up rotation for subsequent stocks
         const apiInterval = setInterval(() => {
+            if (document.hidden) return; // Pause polling when tab is inactive
+
             currentTickerIndex.current = (currentTickerIndex.current + 1) % initialStocks.length;
             const ticker = initialStocks[currentTickerIndex.current]?.ticker;
             if (ticker) {
                 refreshStock(ticker);
             }
-        }, API_CALL_INTERVAL);
+        }, 5000); // Increased to 5 seconds
 
         return () => {
             isMounted.current = false;

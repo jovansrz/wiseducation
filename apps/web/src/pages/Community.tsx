@@ -1,6 +1,145 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { api } from '../lib/api';
+import { authClient } from '../lib/auth-client';
+
+interface Author {
+    id: string;
+    name: string;
+    image: string | null;
+}
+
+interface Post {
+    id: string;
+    content: string;
+    type: string;
+    imageUrl: string | null;
+    pollOptions: any;
+    tags: string[];
+    upvotes: number;
+    downvotes: number;
+    commentCount: number;
+    createdAt: string;
+    author: Author;
+}
+
+interface Comment {
+    id: string;
+    content: string;
+    parentId: string | null;
+    createdAt: string;
+    author: Author;
+}
 
 export const Community: React.FC = () => {
+    const { data: session } = authClient.useSession();
+    const [posts, setPosts] = useState<Post[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [newPostContent, setNewPostContent] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+    const [selectedPost, setSelectedPost] = useState<(Post & { comments: Comment[] }) | null>(null);
+    const [newComment, setNewComment] = useState('');
+    const [activeFilter, setActiveFilter] = useState<'trending' | 'new' | 'top'>('trending');
+
+    // Fetch posts on mount
+    useEffect(() => {
+        fetchPosts();
+    }, []);
+
+    const fetchPosts = async () => {
+        try {
+            setLoading(true);
+            const res = await api.get('/community/posts');
+            setPosts(res.data);
+            setError(null);
+        } catch (err) {
+            console.error('Error fetching posts:', err);
+            setError('Failed to load posts. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleCreatePost = async () => {
+        if (!newPostContent.trim() || submitting) return;
+
+        try {
+            setSubmitting(true);
+            const res = await api.post('/community/posts', {
+                content: newPostContent,
+                type: 'text'
+            });
+            // Add new post to the top of the list
+            const newPost = res.data[0];
+            // Fetch the author info for the new post
+            newPost.author = {
+                id: session?.user?.id,
+                name: session?.user?.name,
+                image: session?.user?.image
+            };
+            setPosts([newPost, ...posts]);
+            setNewPostContent('');
+        } catch (err) {
+            console.error('Error creating post:', err);
+            alert('Failed to create post. Please try again.');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleVote = async (postId: string, direction: 1 | -1) => {
+        try {
+            const res = await api.post(`/community/posts/${postId}/vote`, { direction });
+            // Update local state with new vote counts
+            setPosts(posts.map(p =>
+                p.id === postId
+                    ? { ...p, upvotes: res.data.upvotes, downvotes: res.data.downvotes }
+                    : p
+            ));
+        } catch (err) {
+            console.error('Error voting:', err);
+        }
+    };
+
+    const handleViewComments = async (postId: string) => {
+        try {
+            const res = await api.get(`/community/posts/${postId}`);
+            setSelectedPost(res.data);
+        } catch (err) {
+            console.error('Error fetching post:', err);
+        }
+    };
+
+    const handleAddComment = async () => {
+        if (!selectedPost || !newComment.trim()) return;
+
+        try {
+            await api.post(`/community/posts/${selectedPost.id}/comments`, {
+                content: newComment
+            });
+            // Refresh post with comments
+            handleViewComments(selectedPost.id);
+            setNewComment('');
+        } catch (err) {
+            console.error('Error adding comment:', err);
+        }
+    };
+
+    const formatTimeAgo = (dateString: string) => {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diff = now.getTime() - date.getTime();
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const days = Math.floor(hours / 24);
+
+        if (days > 0) return `${days}d ago`;
+        if (hours > 0) return `${hours}h ago`;
+        return 'Just now';
+    };
+
+    const userAvatar = session?.user?.image || 'https://via.placeholder.com/40';
+    const userName = session?.user?.name || 'Anonymous';
+
     return (
         <div className="bg-background-light dark:bg-background-dark text-[#111418] dark:text-white font-display overflow-x-hidden min-h-screen flex flex-col">
             {/* Header */}
@@ -22,17 +161,25 @@ export const Community: React.FC = () => {
                             <div className="absolute top-2 right-2 size-2 bg-primary rounded-full"></div>
                         </button>
                         <div className="flex items-center gap-2 cursor-pointer">
-                            <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 ring-2 ring-transparent hover:ring-primary transition-all" data-alt="User profile picture showing a confident professional" style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuDeI8M4LSdVn4-1ZEl02HcG4CPcrvOHP7DPqAPjqG4nD1a-227u0z1W5k4F4S2M_H3f9REgjsiFL9D8ISdldBX5IKKXksV7u2AAqdq-W5lfk8FosjCt4fSwy_phC9Z08bKvm2I-hENeNUQSwz30o2_kBKIAl4IE4xb4Lw5fSU3vA8srTeitzkDk70jvgOXnr2zgNnnUiFqj6M1GdUJ6Liq-RjwCQGdeTSEK1izjzbXD6nlD-rHvWGjOONH-FTALB7dgcFSD61uegV0')" }}></div>
+                            <div
+                                className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 ring-2 ring-transparent hover:ring-primary transition-all"
+                                style={{ backgroundImage: `url('${userAvatar}')` }}
+                            ></div>
+                            <span className="text-white font-medium hidden sm:block">{userName}</span>
                         </div>
                     </div>
                 </div>
             </header>
+
             {/* Main Layout */}
             <div className="flex flex-1 justify-center py-6 px-4 sm:px-6 w-full max-w-[1440px] mx-auto gap-6">
                 {/* Left Sidebar (Navigation) */}
                 <aside className="hidden lg:flex flex-col w-64 shrink-0 gap-6 sticky top-24 h-[calc(100vh-6rem)] overflow-y-auto">
                     {/* Primary Action */}
-                    <button className="flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-5 bg-primary hover:bg-[#238c82] transition-colors text-white gap-2 text-base font-bold leading-normal shadow-lg shadow-primary/20">
+                    <button
+                        onClick={() => document.getElementById('create-post-input')?.focus()}
+                        className="flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-5 bg-primary hover:bg-[#238c82] transition-colors text-white gap-2 text-base font-bold leading-normal shadow-lg shadow-primary/20"
+                    >
                         <span className="material-symbols-outlined text-[24px]">add</span>
                         <span className="truncate">Start a Discussion</span>
                     </button>
@@ -92,132 +239,168 @@ export const Community: React.FC = () => {
                         </a>
                     </div>
                 </aside>
+
                 {/* Center Feed */}
                 <main className="flex flex-col flex-1 min-w-0 gap-6">
                     {/* Feed Filters */}
                     <div className="flex items-center justify-between">
                         <div className="flex gap-2">
-                            <button className="px-4 py-2 bg-[#2b3635] text-white rounded-full text-sm font-bold hover:bg-[#384645] transition-colors border border-primary/30 text-primary">Trending</button>
-                            <button className="px-4 py-2 hover:bg-[#2b3635] text-[#a1b5b3] hover:text-white rounded-full text-sm font-bold transition-colors">New</button>
-                            <button className="px-4 py-2 hover:bg-[#2b3635] text-[#a1b5b3] hover:text-white rounded-full text-sm font-bold transition-colors">Top</button>
+                            <button
+                                onClick={() => setActiveFilter('trending')}
+                                className={`px-4 py-2 rounded-full text-sm font-bold transition-colors ${activeFilter === 'trending'
+                                        ? 'bg-[#2b3635] text-primary border border-primary/30'
+                                        : 'hover:bg-[#2b3635] text-[#a1b5b3] hover:text-white'
+                                    }`}
+                            >
+                                Trending
+                            </button>
+                            <button
+                                onClick={() => setActiveFilter('new')}
+                                className={`px-4 py-2 rounded-full text-sm font-bold transition-colors ${activeFilter === 'new'
+                                        ? 'bg-[#2b3635] text-primary border border-primary/30'
+                                        : 'hover:bg-[#2b3635] text-[#a1b5b3] hover:text-white'
+                                    }`}
+                            >
+                                New
+                            </button>
+                            <button
+                                onClick={() => setActiveFilter('top')}
+                                className={`px-4 py-2 rounded-full text-sm font-bold transition-colors ${activeFilter === 'top'
+                                        ? 'bg-[#2b3635] text-primary border border-primary/30'
+                                        : 'hover:bg-[#2b3635] text-[#a1b5b3] hover:text-white'
+                                    }`}
+                            >
+                                Top
+                            </button>
                         </div>
                         <button className="text-[#a1b5b3] hover:text-white flex items-center gap-1 text-sm font-medium">
                             <span className="material-symbols-outlined text-[18px]">tune</span>
                             Filter
                         </button>
                     </div>
+
                     {/* Create Post Input */}
                     <div className="flex gap-4 p-4 rounded-xl bg-surface-dark border border-[#2b3635]">
-                        <div className="size-10 rounded-full bg-cover bg-center shrink-0" data-alt="User avatar small" style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuA9HUc1_vVKjURxHcCE5i9yMrxZyKTFX0sfZmuTlJlO5JlYDBeGIzXl8pl3moT4eBezcBV07vDQSrEOEE-BIFvHDYocLi860qzPsGTPljCD6ETIHniNixamaxSIabUMzy8kIEL3OgfIOTa6sAG_PoGK64oBfPR9LUt4LOiWV2_hlukMkzrGGIYbVdZB_CjCt3IURsUY2zk3ficG1XGPWcXh36BCcNFsU7g7OLur0uFarzYflADg9V4FVvXGXN1xx4XetSfzIGByr54')" }}></div>
+                        <div
+                            className="size-10 rounded-full bg-cover bg-center shrink-0"
+                            style={{ backgroundImage: `url('${userAvatar}')` }}
+                        ></div>
                         <div className="flex-1">
-                            <input className="w-full bg-[#2b3635] border-none rounded-lg px-4 py-2.5 text-white placeholder-[#a1b5b3] focus:ring-1 focus:ring-primary mb-3" placeholder="Share your market insights..." type="text" />
+                            <input
+                                id="create-post-input"
+                                className="w-full bg-[#2b3635] border-none rounded-lg px-4 py-2.5 text-white placeholder-[#a1b5b3] focus:ring-1 focus:ring-primary mb-3"
+                                placeholder="Share your market insights..."
+                                type="text"
+                                value={newPostContent}
+                                onChange={(e) => setNewPostContent(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleCreatePost()}
+                            />
                             <div className="flex justify-between items-center">
                                 <div className="flex gap-2">
                                     <button className="text-[#a1b5b3] hover:text-primary p-1"><span className="material-symbols-outlined text-[20px]">image</span></button>
                                     <button className="text-[#a1b5b3] hover:text-primary p-1"><span className="material-symbols-outlined text-[20px]">bar_chart</span></button>
                                     <button className="text-[#a1b5b3] hover:text-primary p-1"><span className="material-symbols-outlined text-[20px]">poll</span></button>
                                 </div>
-                                <button className="bg-primary/20 hover:bg-primary/30 text-primary px-4 py-1.5 rounded-lg text-sm font-bold transition-colors">Post</button>
+                                <button
+                                    onClick={handleCreatePost}
+                                    disabled={!newPostContent.trim() || submitting}
+                                    className="bg-primary/20 hover:bg-primary/30 text-primary px-4 py-1.5 rounded-lg text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {submitting ? 'Posting...' : 'Post'}
+                                </button>
                             </div>
                         </div>
                     </div>
-                    {/* Post 1: Chart Analysis */}
-                    <article className="flex flex-col gap-4 p-5 rounded-xl bg-surface-dark border border-[#2b3635] hover:border-primary/20 transition-all">
-                        <div className="flex justify-between items-start">
-                            <div className="flex gap-3">
-                                <div className="size-10 rounded-full bg-cover bg-center" data-alt="User avatar for SarahTradez" style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuC4k052xr98QDIgsHIESN3bXobXKgrP_-ACedOYbZH2tvdoYS5if0RSdVZ2QmoBEA5yUgO5s5K7-2pgrBYr22jeSTArZvAQeripOPBRSVuSbxP4STwnCJubQphuGNZWZsbFctatcupb1Bt9fdk-LtnNMSW8zrKQSaAcxkNbnE4YMz11P8TfBAok2WnyfheoaprhXVFqmCQzOFntUXNTp__vH7yrB4cHh2i7jHtHmaNynd9thEerfByYHivoiyIupNcMH-BanLOouGY')" }}></div>
-                                <div className="flex flex-col">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-white font-bold text-sm">SarahTradez</span>
-                                        <span className="px-1.5 py-0.5 rounded bg-primary/20 text-primary text-[10px] font-bold uppercase">Pro</span>
-                                        <span className="text-[#a1b5b3] text-xs">• 2h ago</span>
+
+                    {/* Loading State */}
+                    {loading && (
+                        <div className="flex items-center justify-center py-12">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        </div>
+                    )}
+
+                    {/* Error State */}
+                    {error && (
+                        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-red-400 text-center">
+                            {error}
+                            <button onClick={fetchPosts} className="ml-2 underline hover:no-underline">Retry</button>
+                        </div>
+                    )}
+
+                    {/* Empty State */}
+                    {!loading && !error && posts.length === 0 && (
+                        <div className="text-center py-12 text-[#a1b5b3]">
+                            <span className="material-symbols-outlined text-[48px] mb-4 block">forum</span>
+                            <p className="text-lg font-medium">No posts yet</p>
+                            <p className="text-sm">Be the first to start a discussion!</p>
+                        </div>
+                    )}
+
+                    {/* Posts Feed */}
+                    {!loading && !error && posts.map((post) => (
+                        <article key={post.id} className="flex flex-col gap-4 p-5 rounded-xl bg-surface-dark border border-[#2b3635] hover:border-primary/20 transition-all">
+                            <div className="flex justify-between items-start">
+                                <div className="flex gap-3">
+                                    <div
+                                        className="size-10 rounded-full bg-cover bg-center bg-[#2b3635]"
+                                        style={{ backgroundImage: post.author.image ? `url('${post.author.image}')` : undefined }}
+                                    ></div>
+                                    <div className="flex flex-col">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-white font-bold text-sm">{post.author.name}</span>
+                                            <span className="text-[#a1b5b3] text-xs">• {formatTimeAgo(post.createdAt)}</span>
+                                        </div>
+                                        {post.tags && post.tags.length > 0 && (
+                                            <span className="text-[#a1b5b3] text-xs font-medium">in #{post.tags[0]}</span>
+                                        )}
                                     </div>
-                                    <span className="text-[#a1b5b3] text-xs font-medium">in #StockTalk</span>
                                 </div>
-                            </div>
-                            <button className="text-[#a1b5b3] hover:text-white"><span className="material-symbols-outlined">more_horiz</span></button>
-                        </div>
-                        <div>
-                            <h3 className="text-white text-lg font-bold mb-2">Analyzing TSLA's Q3 earnings - Bullish setup? 🚀</h3>
-                            <p className="text-[#d1dcdb] text-sm leading-relaxed mb-4">
-                                Looking at the daily chart, we're seeing a clear cup and handle formation. With the delivery numbers beating expectations, I think we break resistance at $250. Thoughts?
-                            </p>
-                            <div className="w-full h-64 rounded-lg bg-[#2b3635] relative overflow-hidden group cursor-pointer border border-[#384645]">
-                                <div className="absolute inset-0 bg-cover bg-center opacity-80 group-hover:scale-105 transition-transform duration-500" data-alt="Stock chart showing upward trend with green candles" style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuDBHJzKWCNAGPW8K4LFoPlnDXDUA8mxCXzoDcVDTut_dV85Nt--OMGAXZLRb-HbfYmND1XVLPDUG9nZh-3c_dX0LqtJ8D6Up4hMAxLjVEw_Nl7mi2l4UxfOxKEMhFLonDc6IVy7LkXtza3dxb5-_W5cb9beOv4UX5-zn35wnb49kL1rE9B58xCo8FDDxdT80FLdu7e7SZBg0tGVXK_e4AyOIFFaDHouFQGwv7pI-KphoxHEwll9_dkC03IkROpk5mpaUd14cYlGetw')" }}></div>
-                                <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur px-2 py-1 rounded text-white text-xs font-mono">TSLA $248.50</div>
-                            </div>
-                            <div className="flex gap-2 mt-3">
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-green-500/10 text-green-400 border border-green-500/20">Bullish</span>
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-[#2b3635] text-[#a1b5b3]">$TSLA</span>
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-[#2b3635] text-[#a1b5b3]">Technical Analysis</span>
-                            </div>
-                        </div>
-                        <div className="flex items-center justify-between border-t border-[#2b3635] pt-3 mt-1">
-                            <div className="flex gap-4">
-                                <div className="flex items-center bg-[#2b3635] rounded-lg p-1">
-                                    <button className="p-1 hover:text-primary text-[#a1b5b3] transition-colors"><span className="material-symbols-outlined text-[20px]">arrow_upward</span></button>
-                                    <span className="px-2 text-sm font-bold text-white">245</span>
-                                    <button className="p-1 hover:text-red-400 text-[#a1b5b3] transition-colors"><span className="material-symbols-outlined text-[20px]">arrow_downward</span></button>
-                                </div>
-                                <button className="flex items-center gap-1.5 text-[#a1b5b3] hover:text-white transition-colors text-sm font-medium">
-                                    <span className="material-symbols-outlined text-[20px]">chat_bubble</span>
-                                    42 Comments
-                                </button>
-                                <button className="flex items-center gap-1.5 text-[#a1b5b3] hover:text-white transition-colors text-sm font-medium">
-                                    <span className="material-symbols-outlined text-[20px]">share</span>
-                                    Share
+                                <button className="text-[#a1b5b3] hover:text-white">
+                                    <span className="material-symbols-outlined">more_horiz</span>
                                 </button>
                             </div>
-                        </div>
-                    </article>
-                    {/* Post 2: Poll Widget */}
-                    <article className="flex flex-col gap-4 p-5 rounded-xl bg-surface-dark border border-[#2b3635]">
-                        <div className="flex items-center gap-3 mb-1">
-                            <div className="size-10 rounded-full bg-cover bg-center" data-alt="User avatar for MarketWizard" style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuBFCsipuUtBzkWkg9OF728Hdr42nza1-IVKMr0qBtBp4sG_K-GB6nFBR1M9_Rn8EywqZQf0Ut6rcGWQ1uGkoKcXtrZHIfmLG6dOHlNnS0MYcGf6Uoff14FR5wD7BmbgJJCwedn_CxvmThiYe9b8uFryxqcejW6-PMZkHhJsn69azqln4gZPZRs5821xPVdG8GhSaHmj9_cfIYQhl6CsPpv9cl2nuSL1NeSh6Gcbj8PZkOi1rls5bdnUSfZaW8CfPv4xvWCyS_lgYJ8')" }}></div>
-                            <div className="flex flex-col">
-                                <span className="text-white font-bold text-sm">MarketWizard</span>
-                                <span className="text-[#a1b5b3] text-xs">Asked in #MarketNews • 4h ago</span>
+                            <div>
+                                <p className="text-[#d1dcdb] text-sm leading-relaxed whitespace-pre-wrap">{post.content}</p>
+                                {post.imageUrl && (
+                                    <div className="w-full h-64 rounded-lg bg-[#2b3635] relative overflow-hidden mt-4">
+                                        <img src={post.imageUrl} alt="" className="w-full h-full object-cover" />
+                                    </div>
+                                )}
                             </div>
-                        </div>
-                        <h3 className="text-white text-lg font-bold">Poll: Will the Fed raise rates in the next meeting? 🏦</h3>
-                        <div className="flex flex-col gap-3">
-                            <div className="relative group cursor-pointer">
-                                <div className="flex justify-between text-sm font-medium text-white mb-1 relative z-10 px-3 pt-2">
-                                    <span>Yes, definitely (25bps)</span>
-                                    <span>62%</span>
-                                </div>
-                                <div className="h-10 w-full bg-[#2b3635] rounded-lg overflow-hidden relative">
-                                    <div className="h-full bg-primary/40 w-[62%] absolute top-0 left-0 rounded-l-lg"></div>
-                                    <div className="absolute inset-0 hover:bg-white/5 transition-colors"></div>
-                                </div>
-                            </div>
-                            <div className="relative group cursor-pointer">
-                                <div className="flex justify-between text-sm font-medium text-white mb-1 relative z-10 px-3 pt-2">
-                                    <span>No, they will pause</span>
-                                    <span>28%</span>
-                                </div>
-                                <div className="h-10 w-full bg-[#2b3635] rounded-lg overflow-hidden relative">
-                                    <div className="h-full bg-[#2b3635] w-[28%] absolute top-0 left-0 rounded-l-lg"></div>
-                                    <div className="absolute inset-0 hover:bg-white/5 transition-colors"></div>
-                                </div>
-                            </div>
-                            <div className="relative group cursor-pointer">
-                                <div className="flex justify-between text-sm font-medium text-white mb-1 relative z-10 px-3 pt-2">
-                                    <span>They might cut rates</span>
-                                    <span>10%</span>
-                                </div>
-                                <div className="h-10 w-full bg-[#2b3635] rounded-lg overflow-hidden relative">
-                                    <div className="h-full bg-[#2b3635] w-[10%] absolute top-0 left-0 rounded-l-lg"></div>
-                                    <div className="absolute inset-0 hover:bg-white/5 transition-colors"></div>
+                            <div className="flex items-center justify-between border-t border-[#2b3635] pt-3 mt-1">
+                                <div className="flex gap-4">
+                                    <div className="flex items-center bg-[#2b3635] rounded-lg p-1">
+                                        <button
+                                            onClick={() => handleVote(post.id, 1)}
+                                            className="p-1 hover:text-primary text-[#a1b5b3] transition-colors"
+                                        >
+                                            <span className="material-symbols-outlined text-[20px]">arrow_upward</span>
+                                        </button>
+                                        <span className="px-2 text-sm font-bold text-white">{post.upvotes - post.downvotes}</span>
+                                        <button
+                                            onClick={() => handleVote(post.id, -1)}
+                                            className="p-1 hover:text-red-400 text-[#a1b5b3] transition-colors"
+                                        >
+                                            <span className="material-symbols-outlined text-[20px]">arrow_downward</span>
+                                        </button>
+                                    </div>
+                                    <button
+                                        onClick={() => handleViewComments(post.id)}
+                                        className="flex items-center gap-1.5 text-[#a1b5b3] hover:text-white transition-colors text-sm font-medium"
+                                    >
+                                        <span className="material-symbols-outlined text-[20px]">chat_bubble</span>
+                                        {post.commentCount} Comments
+                                    </button>
+                                    <button className="flex items-center gap-1.5 text-[#a1b5b3] hover:text-white transition-colors text-sm font-medium">
+                                        <span className="material-symbols-outlined text-[20px]">share</span>
+                                        Share
+                                    </button>
                                 </div>
                             </div>
-                        </div>
-                        <div className="flex items-center justify-between mt-2">
-                            <span className="text-[#a1b5b3] text-xs">1,204 votes • 2 days left</span>
-                            <button className="text-primary text-sm font-bold hover:underline">View Discussion</button>
-                        </div>
-                    </article>
+                        </article>
+                    ))}
                 </main>
+
                 {/* Right Sidebar (Widgets) */}
                 <aside className="hidden xl:flex flex-col w-80 shrink-0 gap-6 sticky top-24 h-[calc(100vh-6rem)]">
                     {/* Top Contributors Widget */}
@@ -227,49 +410,78 @@ export const Community: React.FC = () => {
                             <a href="#" className="text-primary text-xs font-bold hover:underline">View All</a>
                         </div>
                         <div className="flex flex-col gap-4">
-                            {/* User 1 */}
-                            <div className="flex items-center gap-3">
-                                <div className="relative">
-                                    <div className="size-10 rounded-full bg-cover bg-center" data-alt="Avatar of top contributor 1" style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuC1mvpmemMy6cMkExGE_n5fM73eDh8AFCKTb_IkSY3vv83KVWv7m6rRULntCMyXzY_w29Xpmz_tztiw81wrRyGhNOWkkIDn59UzlWnKW20EuLRDjwWJRKCs2RiQyZI2AMnwnEUIC7zR9szEjZlTBApV8494rMxXb8_VuUBFvC7ZLH7d3Af1AnIoTdaZyyfXSt15jglhnC46poXoQZMJi-cqjsZ5PATsUIdbwDjmVubGBpZGJvKBUzb2mjiSXnrBeREGX7BPvOv2ep8')" }}></div>
-                                    <div className="absolute -top-1 -right-1 bg-yellow-500 text-black text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">1</div>
-                                </div>
-                                <div className="flex flex-col flex-1">
-                                    <span className="text-white text-sm font-bold">DavidAlpha</span>
-                                    <span className="text-[#a1b5b3] text-xs">15.4k Rep Points</span>
-                                </div>
-                                <button className="text-primary hover:text-white p-1 rounded hover:bg-[#2b3635] transition-colors"><span className="material-symbols-outlined text-[20px]">person_add</span></button>
-                            </div>
-                            {/* User 2 */}
-                            <div className="flex items-center gap-3">
-                                <div className="relative">
-                                    <div className="size-10 rounded-full bg-cover bg-center" data-alt="Avatar of top contributor 2" style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuAGjNG5akHRUGSo9jO-n-aUnI5yq6wUfchuokUFpdgPB_90J8aouNPB0riLtuxE3Cwglc0rFeQA4caMzfY-a1KXNZVf2o0nViTs9TwasEAjKqbe6XHAzq8VM1zuKlm6dDBYYV6YomPP5I5__Iq8vW8hb388BTswmhTsvpiUc5dxrtu8twf2advlzZNN3iVRP4N5-xEZzq6FLNsuGBXr07iNN2vpm2DDekGFZXgfgJ9sV2KuQ72lscnSUr7FmYUA3bqfZiws3jvP7fE')" }}></div>
-                                    <div className="absolute -top-1 -right-1 bg-gray-400 text-black text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">2</div>
-                                </div>
-                                <div className="flex flex-col flex-1">
-                                    <span className="text-white text-sm font-bold">ElenaCharts</span>
-                                    <span className="text-[#a1b5b3] text-xs">12.8k Rep Points</span>
-                                </div>
-                                <button className="text-primary hover:text-white p-1 rounded hover:bg-[#2b3635] transition-colors"><span className="material-symbols-outlined text-[20px]">person_add</span></button>
-                            </div>
-                            {/* User 3 */}
-                            <div className="flex items-center gap-3">
-                                <div className="relative">
-                                    <div className="size-10 rounded-full bg-cover bg-center" data-alt="Avatar of top contributor 3" style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuCVOsnYYPe60GIfhTnub_XrC2XZ8PBTAtbs-pnmTB2ouV62iob0HIef5SpEk41CvRX9KsO9Fm8fmQgrRCkEo3KAFA-EWnMjNASJXdRqLYKHHte9MqDywwcPqsfmicfUs_BI1Ux5aS5nueOEu6qbkYyK4rNrnX23ppIIm4xudSzEh9vOjQVw3IDjt6MdmsfceQvb8J2MoKuMstvW2K0FL79DkwSJQ96NgPUCyCBo-sZ1MewZqX7PxzH6ly_oaZzb7G4yjLuMi-niyvE')" }}></div>
-                                    <div className="absolute -top-1 -right-1 bg-orange-700 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">3</div>
-                                </div>
-                                <div className="flex flex-col flex-1">
-                                    <span className="text-white text-sm font-bold">QuantMaster</span>
-                                    <span className="text-[#a1b5b3] text-xs">10.1k Rep Points</span>
-                                </div>
-                                <button className="text-primary hover:text-white p-1 rounded hover:bg-[#2b3635] transition-colors"><span className="material-symbols-outlined text-[20px]">person_add</span></button>
-                            </div>
+                            <p className="text-[#a1b5b3] text-sm">Join the community and start contributing!</p>
                         </div>
                     </div>
                 </aside>
             </div>
-            {/* Sticky Mobile Action Button (Visible only on small screens) */}
+
+            {/* Comment Modal */}
+            {selectedPost && (
+                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+                    <div className="bg-surface-dark rounded-xl border border-[#2b3635] w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+                        <div className="flex justify-between items-center p-4 border-b border-[#2b3635]">
+                            <h3 className="text-white font-bold">Comments</h3>
+                            <button
+                                onClick={() => setSelectedPost(null)}
+                                className="text-[#a1b5b3] hover:text-white"
+                            >
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                            {selectedPost.comments.length === 0 ? (
+                                <p className="text-[#a1b5b3] text-center py-8">No comments yet. Be the first!</p>
+                            ) : (
+                                selectedPost.comments.map((comment) => (
+                                    <div key={comment.id} className="flex gap-3">
+                                        <div
+                                            className="size-8 rounded-full bg-cover bg-center bg-[#2b3635] shrink-0"
+                                            style={{ backgroundImage: comment.author.image ? `url('${comment.author.image}')` : undefined }}
+                                        ></div>
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-white font-bold text-sm">{comment.author.name}</span>
+                                                <span className="text-[#a1b5b3] text-xs">{formatTimeAgo(comment.createdAt)}</span>
+                                            </div>
+                                            <p className="text-[#d1dcdb] text-sm mt-1">{comment.content}</p>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                        <div className="p-4 border-t border-[#2b3635]">
+                            <div className="flex gap-3">
+                                <div
+                                    className="size-8 rounded-full bg-cover bg-center shrink-0"
+                                    style={{ backgroundImage: `url('${userAvatar}')` }}
+                                ></div>
+                                <input
+                                    className="flex-1 bg-[#2b3635] border-none rounded-lg px-4 py-2 text-white placeholder-[#a1b5b3] focus:ring-1 focus:ring-primary"
+                                    placeholder="Write a comment..."
+                                    value={newComment}
+                                    onChange={(e) => setNewComment(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
+                                />
+                                <button
+                                    onClick={handleAddComment}
+                                    disabled={!newComment.trim()}
+                                    className="bg-primary hover:bg-[#238c82] text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors disabled:opacity-50"
+                                >
+                                    Send
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Sticky Mobile Action Button */}
             <div className="fixed bottom-6 right-6 lg:hidden">
-                <button className="size-14 bg-primary text-white rounded-full shadow-xl shadow-primary/30 flex items-center justify-center">
+                <button
+                    onClick={() => document.getElementById('create-post-input')?.focus()}
+                    className="size-14 bg-primary text-white rounded-full shadow-xl shadow-primary/30 flex items-center justify-center"
+                >
                     <span className="material-symbols-outlined text-[28px]">add</span>
                 </button>
             </div>
