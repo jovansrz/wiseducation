@@ -17,6 +17,7 @@ import { authClient } from './lib/auth-client';
 import { PortfolioProvider } from './context/PortfolioContext';
 import { Routes, Route, useLocation, Navigate, useNavigate } from 'react-router-dom'; // Added useNavigate
 import { ProfileSetup } from './pages/ProfileSetup';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 const AppRoutes = () => (
   <Routes>
@@ -122,6 +123,7 @@ function App() {
           </main>
         </div>
       </div>
+      <SpeedInsights />
     </PortfolioProvider>
   );
 }
